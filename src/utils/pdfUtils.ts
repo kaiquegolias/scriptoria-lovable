@@ -98,7 +98,6 @@ export const generatePDF = (script: Script) => {
   doc.text(modeloLines, 14, yPos + 13);
   
   // Rodapé
-  const totalPages = doc.internal.getNumberOfPages();
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(10);
   doc.setTextColor(100, 100, 100);
@@ -121,4 +120,3 @@ const addPageIfNeeded = (doc: any, yPos: number, limit: number = 270): number =>
   }
   return yPos;
 };
-

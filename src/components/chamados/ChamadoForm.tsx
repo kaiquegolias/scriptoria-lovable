@@ -12,8 +12,8 @@ interface ChamadoFormProps {
 
 const ChamadoForm: React.FC<ChamadoFormProps> = ({ onClose, onSave, chamado }) => {
   const [titulo, setTitulo] = useState(chamado?.titulo || '');
-  const [status, setStatus] = useState<'aberto' | 'em_andamento' | 'pendente' | 'resolvido'>(
-    chamado?.status || 'aberto'
+  const [status, setStatus] = useState<'agendados' | 'agendados_planner' | 'agendados_aguardando' | 'em_andamento' | 'resolvido'>(
+    chamado?.status || 'agendados'
   );
   const [estruturante, setEstruturante] = useState<'PNCP' | 'PEN' | 'Outros'>(
     chamado?.estruturante || 'Outros'
@@ -103,12 +103,13 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onClose, onSave, chamado }) =
               <select
                 id="status"
                 value={status}
-                onChange={(e) => setStatus(e.target.value as 'aberto' | 'em_andamento' | 'pendente' | 'resolvido')}
-                className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all"
+                onChange={(e) => setStatus(e.target.value as 'agendados' | 'agendados_planner' | 'agendados_aguardando' | 'em_andamento' | 'resolvido')}
+                className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all text-foreground"
               >
-                <option value="aberto">Aberto</option>
+                <option value="agendados">Agendados</option>
+                <option value="agendados_planner">Agendados PLANNER</option>
+                <option value="agendados_aguardando">Aguardando devolutiva</option>
                 <option value="em_andamento">Em Andamento</option>
-                <option value="pendente">Pendente</option>
                 <option value="resolvido">Resolvido</option>
               </select>
             </div>
@@ -121,7 +122,7 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onClose, onSave, chamado }) =
                 id="estruturante"
                 value={estruturante}
                 onChange={(e) => setEstruturante(e.target.value as 'PNCP' | 'PEN' | 'Outros')}
-                className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all"
+                className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all text-foreground"
               >
                 <option value="PNCP">PNCP</option>
                 <option value="PEN">PEN</option>
@@ -137,7 +138,7 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onClose, onSave, chamado }) =
                 id="nivel"
                 value={nivel}
                 onChange={(e) => setNivel(e.target.value as 'N1' | 'N2' | 'N3')}
-                className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all"
+                className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all text-foreground"
               >
                 <option value="N1">N1</option>
                 <option value="N2">N2</option>
@@ -154,7 +155,7 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onClose, onSave, chamado }) =
               id="acompanhamento"
               value={acompanhamento}
               onChange={(e) => setAcompanhamento(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all min-h-[120px]"
+              className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all min-h-[120px] text-foreground"
               placeholder="Informações de acompanhamento do chamado"
             />
           </div>
@@ -180,7 +181,7 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onClose, onSave, chamado }) =
                   type="text"
                   value={link}
                   onChange={(e) => updateLink(index, e.target.value)}
-                  className="flex-1 px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all"
+                  className="flex-1 px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all text-foreground"
                   placeholder="https://exemplo.com"
                 />
                 <button

@@ -128,10 +128,30 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <div className="w-3 h-3 rounded-full bg-status-info mr-2"></div>
-                <span className="text-sm">Abertos</span>
+                <span className="text-sm">Agendados</span>
               </div>
               <span className="font-medium">
-                {chamados.filter(c => c.status === 'aberto').length}
+                {chamados.filter(c => c.status === 'agendados').length}
+              </span>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="w-3 h-3 rounded-full bg-purple-500 mr-2"></div>
+                <span className="text-sm">Agendados PLANNER</span>
+              </div>
+              <span className="font-medium">
+                {chamados.filter(c => c.status === 'agendados_planner').length}
+              </span>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="w-3 h-3 rounded-full bg-yellow-500 mr-2"></div>
+                <span className="text-sm">Aguardando devolutiva</span>
+              </div>
+              <span className="font-medium">
+                {chamados.filter(c => c.status === 'agendados_aguardando').length}
               </span>
             </div>
             
@@ -142,16 +162,6 @@ const Dashboard = () => {
               </div>
               <span className="font-medium">
                 {chamados.filter(c => c.status === 'em_andamento').length}
-              </span>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-3 h-3 rounded-full bg-gray-400 mr-2"></div>
-                <span className="text-sm">Pendentes</span>
-              </div>
-              <span className="font-medium">
-                {chamados.filter(c => c.status === 'pendente').length}
               </span>
             </div>
             
