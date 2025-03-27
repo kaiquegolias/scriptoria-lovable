@@ -1,18 +1,17 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import ScriptCard, { Script } from './ScriptCard';
 import ScriptForm from './ScriptForm';
 import ScriptModal from './ScriptModal';
 import { toast } from 'sonner';
 import { Plus, Search } from 'lucide-react';
-import useLocalStorage from '@/hooks/useLocalStorage';
 import { useAuth } from '@/context/AuthContext';
+import { useScripts } from '@/hooks/useScripts';
 
 const ScriptList = () => {
   const { user } = useAuth();
-  const storageKey = `scripts-${user?.id || 'guest'}`;
+  const { scripts, loading, createScript, updateScript, deleteScript } = useScripts();
   
-  const [scripts, setScripts] = useLocalStorage<Script[]>(storageKey, []);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [scriptToEdit, setScriptToEdit] = useState<Script | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,10 +39,12 @@ const ScriptList = () => {
     setIsFormOpen(true);
   };
   
-  const handleDeleteScript = (id: string) => {
+  const handleDeleteScript = async (id: string) => {
     if (window.confirm('Tem certeza que deseja excluir este script?')) {
-      setScripts(scripts.filter((script) => script.id !== id));
-      toast.success('Script excluído com sucesso!');
+      const success = await deleteScript(id);
+      if (success) {
+        toast.success('Script excluído com sucesso!');
+      }
     }
   };
 
@@ -55,44 +56,42 @@ const ScriptList = () => {
     setSelectedScript(null);
   };
   
-  const handleSaveScript = (
+  const handleSaveScript = async (
     scriptData: Omit<Script, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }
   ) => {
-    const now = new Date().toISOString();
-    
     if (scriptData.id) {
       // Atualizar script existente
-      setScripts(
-        scripts.map((script) =>
-          script.id === scriptData.id
-            ? {
-                ...script,
-                ...scriptData,
-                updatedAt: now,
-              }
-            : script
-        )
-      );
-      toast.success('Script atualizado com sucesso!');
+      const updated = await updateScript(scriptData.id, scriptData);
+      if (updated) {
+        toast.success('Script atualizado com sucesso!');
+      }
     } else {
       // Criar novo script
-      const newScript: Script = {
-        id: Math.random().toString(36).substring(2),
-        nome: scriptData.nome,
-        estruturante: scriptData.estruturante,
-        nivel: scriptData.nivel,
-        situacao: scriptData.situacao,
-        modelo: scriptData.modelo,
-        createdAt: now,
-        updatedAt: now,
-      };
-      
-      setScripts([newScript, ...scripts]);
-      toast.success('Script criado com sucesso!');
+      const created = await createScript(scriptData);
+      if (created) {
+        toast.success('Script criado com sucesso!');
+      }
     }
     
     handleCloseForm();
   };
+  
+  if (!user) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-lg font-medium">Você precisa estar logado para visualizar scripts.</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
+        <p className="mt-4 text-lg font-medium">Carregando scripts...</p>
+      </div>
+    );
+  }
   
   return (
     <div className="animate-fade-in">

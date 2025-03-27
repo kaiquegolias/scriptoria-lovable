@@ -1,4 +1,5 @@
 
+// This file is now kept just for backward compatibility, but we'll primarily use Supabase for storage
 import { useState, useEffect } from 'react';
 
 function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val: T) => T)) => void] {

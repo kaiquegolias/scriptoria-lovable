@@ -1,12 +1,13 @@
+
 import React, { useState } from 'react';
 import ChamadoCard, { Chamado } from './ChamadoCard';
 import ChamadoForm from './ChamadoForm';
 import ChamadoModal from './ChamadoModal';
 import { toast } from 'sonner';
 import { Plus, Search, Filter } from 'lucide-react';
-import useLocalStorage from '@/hooks/useLocalStorage';
 import { useAuth } from '@/context/AuthContext';
 import { addBusinessDays } from 'date-fns';
+import { useChamados } from '@/hooks/useChamados';
 
 interface ChamadoListProps {
   encerrados?: boolean;
@@ -15,9 +16,15 @@ interface ChamadoListProps {
 
 const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishChamado }) => {
   const { user } = useAuth();
-  const storageKey = `chamados-${user?.id || 'guest'}`;
+  const { 
+    chamados, 
+    loading, 
+    createChamado, 
+    updateChamado, 
+    finishChamado, 
+    reopenChamado 
+  } = useChamados(encerrados);
   
-  const [chamados, setChamados] = useLocalStorage<Chamado[]>(storageKey, []);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [chamadoToEdit, setChamadoToEdit] = useState<Chamado | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState('');
@@ -26,7 +33,6 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
   const [selectedChamado, setSelectedChamado] = useState<Chamado | null>(null);
   
   const chamadosFiltrados = chamados
-    .filter(chamado => encerrados ? chamado.status === 'resolvido' : chamado.status !== 'resolvido')
     .filter(chamado => 
       chamado.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       chamado.acompanhamento.toLowerCase().includes(searchTerm.toLowerCase())
@@ -49,23 +55,13 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
     setIsFormOpen(true);
   };
   
-  const handleFinishChamado = (id: string) => {
+  const handleFinishChamado = async (id: string) => {
     if (window.confirm('Deseja finalizar este chamado?')) {
-      const chamadoIndex = chamados.findIndex(c => c.id === id);
-      if (chamadoIndex !== -1) {
-        const updatedChamado = {
-          ...chamados[chamadoIndex],
-          status: 'resolvido' as const,
-          dataAtualizacao: new Date().toISOString()
-        };
-        
-        const newChamados = [...chamados];
-        newChamados[chamadoIndex] = updatedChamado;
-        
-        setChamados(newChamados);
-        
+      const updated = await finishChamado(id);
+      
+      if (updated) {
         if (onFinishChamado) {
-          onFinishChamado(updatedChamado);
+          onFinishChamado(updated);
         }
         
         toast.success('Chamado finalizado com sucesso!');
@@ -73,20 +69,11 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
     }
   };
   
-  const handleReopenChamado = (id: string) => {
+  const handleReopenChamado = async (id: string) => {
     if (window.confirm('Deseja reabrir este chamado?')) {
-      const chamadoIndex = chamados.findIndex(c => c.id === id);
-      if (chamadoIndex !== -1) {
-        const updatedChamado = {
-          ...chamados[chamadoIndex],
-          status: 'em_andamento' as const,
-          dataAtualizacao: new Date().toISOString()
-        };
-        
-        const newChamados = [...chamados];
-        newChamados[chamadoIndex] = updatedChamado;
-        
-        setChamados(newChamados);
+      const updated = await reopenChamado(id);
+      
+      if (updated) {
         toast.success('Chamado reaberto com sucesso!');
       }
     }
@@ -100,66 +87,54 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
     setSelectedChamado(null);
   };
   
-  const handleSaveChamado = (
+  const handleSaveChamado = async (
     chamadoData: Omit<Chamado, 'id' | 'dataCriacao' | 'dataAtualizacao'> & { id?: string }
   ) => {
-    const now = new Date().toISOString();
-    
-    let dataLimite;
-    if (chamadoData.status === 'agendados_aguardando') {
-      dataLimite = addBusinessDays(new Date(), 3).toISOString();
-    }
-    
     if (chamadoData.id) {
-      setChamados(
-        chamados.map((chamado) =>
-          chamado.id === chamadoData.id
-            ? {
-                ...chamado,
-                ...chamadoData,
-                dataAtualizacao: now,
-                dataLimite: chamadoData.status === 'agendados_aguardando' 
-                  ? (chamado.status === 'agendados_aguardando' ? chamado.dataLimite : dataLimite)
-                  : undefined,
-              }
-            : chamado
-        )
-      );
-      toast.success('Chamado atualizado com sucesso!');
-    } else {
-      const newChamado: Chamado = {
-        id: Math.random().toString(36).substring(2),
-        titulo: chamadoData.titulo,
-        status: chamadoData.status,
-        estruturante: chamadoData.estruturante,
-        nivel: chamadoData.nivel,
-        acompanhamento: chamadoData.acompanhamento,
-        links: chamadoData.links,
-        dataCriacao: now,
-        dataAtualizacao: now,
-        dataLimite: chamadoData.status === 'agendados_aguardando' ? dataLimite : undefined,
-      };
+      const updated = await updateChamado(chamadoData.id, chamadoData);
       
-      setChamados([newChamado, ...chamados]);
-      toast.success('Chamado criado com sucesso!');
+      if (updated) {
+        toast.success('Chamado atualizado com sucesso!');
+      }
+    } else {
+      const created = await createChamado(chamadoData);
+      
+      if (created) {
+        toast.success('Chamado criado com sucesso!');
+      }
     }
     
     handleCloseForm();
   };
   
   const estruturanteCount = chamados
-    .filter(chamado => encerrados ? chamado.status === 'resolvido' : chamado.status !== 'resolvido')
     .reduce((acc, chamado) => {
       acc[chamado.estruturante] = (acc[chamado.estruturante] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
   
   const statusCount = chamados
-    .filter(chamado => encerrados ? chamado.status === 'resolvido' : chamado.status !== 'resolvido')
     .reduce((acc, chamado) => {
       acc[chamado.status] = (acc[chamado.status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
+  
+  if (!user) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-lg font-medium">Você precisa estar logado para visualizar chamados.</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
+        <p className="mt-4 text-lg font-medium">Carregando chamados...</p>
+      </div>
+    );
+  }
   
   return (
     <div className="animate-fade-in">
