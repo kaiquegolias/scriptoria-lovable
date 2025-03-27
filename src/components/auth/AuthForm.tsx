@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
@@ -10,7 +9,7 @@ const AuthForm = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
-  const { login, register } = useAuth();
+  const { signIn, signUp } = useAuth();
   
   const toggleAuthMode = () => {
     setIsLogin(!isLogin);
@@ -26,10 +25,7 @@ const AuthForm = () => {
     
     try {
       if (isLogin) {
-        const success = await login(email, password);
-        if (!success) {
-          toast.error('Credenciais inválidas. Tente novamente.');
-        }
+        await signIn(email, password);
       } else {
         if (!name) {
           toast.error('O nome é obrigatório');
@@ -37,13 +33,10 @@ const AuthForm = () => {
           return;
         }
         
-        const success = await register(name, email, password);
-        if (!success) {
-          toast.error('Falha no registro. Verifique os dados e tente novamente.');
-        }
+        await signUp(email, password);
       }
     } catch (error) {
-      toast.error('Ocorreu um erro. Tente novamente mais tarde.');
+      // Erro já tratado nos métodos signIn e signUp
     } finally {
       setIsLoading(false);
     }
