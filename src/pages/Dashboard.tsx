@@ -37,11 +37,14 @@ const Dashboard = () => {
     new Date(c.dataAtualizacao).toISOString().split('T')[0] === hoje
   ).length;
 
+  // Get display name from user email or use a default greeting
+  const userDisplayName = user?.email?.split('@')[0] || 'usuário';
+
   return (
     <div className="container mx-auto px-4 py-8 animate-fade-in">
       <h1 className="text-2xl font-bold mb-2">Dashboard</h1>
       <p className="text-foreground/70 mb-8">
-        Bem-vindo, {user?.name}. Veja um resumo das suas atividades.
+        Bem-vindo, {userDisplayName}. Veja um resumo das suas atividades.
       </p>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
