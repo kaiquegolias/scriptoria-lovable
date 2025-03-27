@@ -1,119 +1,136 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { User, Session } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-}
-
 interface AuthContextType {
-  user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  user: User | null;
+  session: Session | null;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
-  }
-  return context;
-};
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Verificar se há um usuário logado no localStorage
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    // Configurar o listener para mudanças de autenticação
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, newSession) => {
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+        setIsLoading(false);
+      }
+    );
+
+    // Checar a sessão atual
+    const checkCurrentSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      setSession(data.session);
+      setUser(data.session?.user ?? null);
+      setIsLoading(false);
+    };
+    
+    checkCurrentSession();
+
+    // Limpar o listener
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const signIn = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      // Simulando verificação de login
-      if (email.includes('@') && password.length >= 6) {
-        // Em um sistema real, você faria uma chamada de API aqui
-        const mockUser = {
-          id: Math.random().toString(36).substring(2),
-          name: email.split('@')[0],
-          email
-        };
-        
-        setUser(mockUser);
-        localStorage.setItem('user', JSON.stringify(mockUser));
-        toast.success('Login realizado com sucesso!');
-        return true;
-      } else {
-        toast.error('Credenciais inválidas');
-        return false;
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        toast.error(error.message);
+        throw error;
       }
+
+      toast.success('Login realizado com sucesso!');
     } catch (error) {
-      toast.error('Erro ao fazer login');
-      return false;
+      console.error('Erro ao fazer login:', error);
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const register = async (name: string, email: string, password: string): Promise<boolean> => {
+  const signUp = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      // Simulando registro
-      if (email.includes('@') && password.length >= 6) {
-        // Em um sistema real, você faria uma chamada de API aqui
-        const mockUser = {
-          id: Math.random().toString(36).substring(2),
-          name,
-          email
-        };
-        
-        setUser(mockUser);
-        localStorage.setItem('user', JSON.stringify(mockUser));
-        toast.success('Registro realizado com sucesso!');
-        return true;
-      } else {
-        toast.error('Dados de registro inválidos');
-        return false;
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) {
+        toast.error(error.message);
+        throw error;
       }
+
+      toast.success('Cadastro realizado com sucesso! Verifique seu email.');
     } catch (error) {
-      toast.error('Erro ao registrar usuário');
-      return false;
+      console.error('Erro ao fazer cadastro:', error);
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
-    toast.success('Logout realizado com sucesso!');
+  const signOut = async () => {
+    try {
+      setIsLoading(true);
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        toast.error(error.message);
+        throw error;
+      }
+      
+      toast.success('Logout realizado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <AuthContext.Provider
       value={{
-        user,
         isAuthenticated: !!user,
         isLoading,
-        login,
-        register,
-        logout
+        user,
+        session,
+        signIn,
+        signUp,
+        signOut,
       }}
     >
       {children}
     </AuthContext.Provider>
   );
+};
+
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };

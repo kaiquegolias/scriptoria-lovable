@@ -17,6 +17,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 
 // Adiciona a biblioteca framer-motion para animações
 import { AnimatePresence, motion } from 'framer-motion';
+import { ThemeProvider } from './context/ThemeContext';
 
 const queryClient = new QueryClient();
 
@@ -72,52 +73,54 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <Layout>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/scripts"
-                element={
-                  <ProtectedRoute>
-                    <Scripts />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/chamados"
-                element={
-                  <ProtectedRoute>
-                    <Chamados />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/chamados-encerrados"
-                element={
-                  <ProtectedRoute>
-                    <ChamadosEncerrados />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Layout>
-        </BrowserRouter>
-        <Toaster />
-        <Sonner />
-      </AuthProvider>
-    </TooltipProvider>
+    <ThemeProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <TooltipProvider>
+            <Layout>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/scripts"
+                  element={
+                    <ProtectedRoute>
+                      <Scripts />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/chamados"
+                  element={
+                    <ProtectedRoute>
+                      <Chamados />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/chamados-encerrados"
+                  element={
+                    <ProtectedRoute>
+                      <ChamadosEncerrados />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Layout>
+            <Toaster />
+            <Sonner />
+          </TooltipProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
