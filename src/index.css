@@ -93,6 +93,11 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
+  /* Fix para o problema de inputs com texto branco em fundo branco */
+  input, textarea, select {
+    @apply text-foreground bg-white border-input;
+  }
+
   /* Glassmorphism */
   .glass {
     @apply bg-white/60 backdrop-blur-lg border border-white/20 shadow-sm dark:bg-black/20 dark:border-white/10;
@@ -135,5 +140,36 @@
   
   .status-badge {
     @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium;
+  }
+
+  /* Modal para visualização de cards */
+  .modal-overlay {
+    @apply fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4;
+  }
+  
+  .modal-content {
+    @apply bg-background rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto;
+  }
+
+  /* Animação para o modal */
+  .modal-enter {
+    @apply opacity-0 scale-95;
+  }
+  
+  .modal-enter-active {
+    @apply opacity-100 scale-100 transition-all duration-200;
+  }
+  
+  .modal-exit {
+    @apply opacity-100 scale-100;
+  }
+  
+  .modal-exit-active {
+    @apply opacity-0 scale-95 transition-all duration-200;
+  }
+
+  /* Status com atraso */
+  .status-delayed {
+    @apply bg-red-100 text-red-800 border border-red-200;
   }
 }

@@ -1,35 +1,53 @@
 
-import React from 'react';
-import { Edit, ExternalLink, CheckCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Edit, ExternalLink, CheckCircle, AlertCircle, Calendar, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { format, addHours, isAfter } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { motion } from 'framer-motion';
 
 export interface Chamado {
   id: string;
   titulo: string;
-  status: 'aberto' | 'em_andamento' | 'pendente' | 'resolvido';
+  status: 'agendados' | 'agendados_planner' | 'agendados_aguardando' | 'em_andamento' | 'resolvido';
   estruturante: 'PNCP' | 'PEN' | 'Outros';
   nivel: 'N1' | 'N2' | 'N3';
   acompanhamento: string;
   links: string[];
   dataCriacao: string;
   dataAtualizacao: string;
+  dataLimite?: string; // Data limite para chamados aguardando devolutiva
 }
 
 interface ChamadoCardProps {
   chamado: Chamado;
   onEdit: (chamado: Chamado) => void;
   onFinish?: (id: string) => void;
+  onReopen?: (id: string) => void;
+  onViewDetails?: (chamado: Chamado) => void;
 }
 
-const ChamadoCard: React.FC<ChamadoCardProps> = ({ chamado, onEdit, onFinish }) => {
+const ChamadoCard: React.FC<ChamadoCardProps> = ({ 
+  chamado, 
+  onEdit, 
+  onFinish, 
+  onReopen,
+  onViewDetails
+}) => {
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'aberto':
-        return 'bg-status-info';
+      case 'agendados':
+        return 'bg-blue-500';
+      case 'agendados_planner':
+        return 'bg-purple-500';
+      case 'agendados_aguardando':
+        // Verificar se está atrasado (mais de 72 horas)
+        if (chamado.dataLimite && isAfter(new Date(), new Date(chamado.dataLimite))) {
+          return 'bg-red-600';
+        }
+        return 'bg-yellow-500';
       case 'em_andamento':
         return 'bg-status-warning';
-      case 'pendente':
-        return 'bg-gray-400';
       case 'resolvido':
         return 'bg-status-success';
       default:
@@ -39,12 +57,14 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({ chamado, onEdit, onFinish }) 
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'aberto':
-        return 'Aberto';
+      case 'agendados':
+        return 'Agendados';
+      case 'agendados_planner':
+        return 'Agendados PLANNER';
+      case 'agendados_aguardando':
+        return 'Aguardando devolutiva';
       case 'em_andamento':
         return 'Em Andamento';
-      case 'pendente':
-        return 'Pendente';
       case 'resolvido':
         return 'Resolvido';
       default:
@@ -76,8 +96,20 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({ chamado, onEdit, onFinish }) 
     }
   };
 
+  // Verificar se o cartão está atrasado (para chamados aguardando devolutiva)
+  const isCardDelayed = chamado.status === 'agendados_aguardando' && 
+                        chamado.dataLimite && 
+                        isAfter(new Date(), new Date(chamado.dataLimite));
+
+  // Classe condicional para cartões atrasados
+  const cardClass = `glass p-6 rounded-xl shadow-sm hover-lift cursor-pointer ${isCardDelayed ? 'status-delayed' : ''}`;
+
   return (
-    <div className="glass p-6 rounded-xl shadow-sm hover-lift">
+    <motion.div 
+      className={cardClass}
+      whileHover={{ scale: 1.02 }}
+      onClick={() => onViewDetails && onViewDetails(chamado)}
+    >
       <div className="flex justify-between items-start mb-3">
         <div className="flex items-center">
           <div className={`w-3 h-3 rounded-full mr-3 ${getStatusColor(chamado.status)}`}></div>
@@ -85,7 +117,10 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({ chamado, onEdit, onFinish }) 
         </div>
         <div className="flex space-x-1">
           <button
-            onClick={() => onEdit(chamado)}
+            onClick={(e) => {
+              e.stopPropagation(); // Evita que o clique propague para o card
+              onEdit(chamado);
+            }}
             className="p-1.5 rounded-full hover:bg-gray-200 transition-colors"
             aria-label="Editar"
           >
@@ -93,11 +128,26 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({ chamado, onEdit, onFinish }) 
           </button>
           {onFinish && chamado.status !== 'resolvido' && (
             <button
-              onClick={() => onFinish(chamado.id)}
+              onClick={(e) => {
+                e.stopPropagation(); // Evita que o clique propague para o card
+                onFinish(chamado.id);
+              }}
               className="p-1.5 rounded-full hover:bg-green-100 hover:text-green-600 transition-colors"
               aria-label="Finalizar chamado"
             >
               <CheckCircle size={16} />
+            </button>
+          )}
+          {onReopen && chamado.status === 'resolvido' && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation(); // Evita que o clique propague para o card
+                onReopen(chamado.id);
+              }}
+              className="p-1.5 rounded-full hover:bg-blue-100 hover:text-blue-600 transition-colors"
+              aria-label="Reabrir chamado"
+            >
+              <RefreshCw size={16} />
             </button>
           )}
         </div>
@@ -135,6 +185,7 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({ chamado, onEdit, onFinish }) 
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                onClick={(e) => e.stopPropagation()} // Evita que o clique propague para o card
               >
                 <ExternalLink size={10} className="mr-1" />
                 Link {index + 1}
@@ -144,10 +195,25 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({ chamado, onEdit, onFinish }) 
         </div>
       )}
       
+      {/* Data limite para chamados que aguardam devolutiva */}
+      {chamado.status === 'agendados_aguardando' && chamado.dataLimite && (
+        <div className={`mb-4 p-2 rounded-md flex items-center ${isCardDelayed ? 'bg-red-100' : 'bg-yellow-100'}`}>
+          <Calendar size={14} className={isCardDelayed ? 'text-red-600 mr-2' : 'text-yellow-600 mr-2'} />
+          <div>
+            <span className="text-xs font-medium">
+              {isCardDelayed ? 'ATRASADO - Prazo expirado em: ' : 'Aguardando até: '}
+            </span>
+            <span className="text-xs">
+              {format(new Date(chamado.dataLimite), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+            </span>
+          </div>
+        </div>
+      )}
+      
       <div className="text-xs text-foreground/60 mt-2">
         Atualizado em {new Date(chamado.dataAtualizacao).toLocaleDateString('pt-BR')}
       </div>
-    </div>
+    </motion.div>
   );
 };
 

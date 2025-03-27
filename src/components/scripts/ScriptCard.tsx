@@ -1,7 +1,9 @@
 
 import React from 'react';
-import { Edit, Trash2, Copy } from 'lucide-react';
+import { Edit, Trash2, Copy, FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import { motion } from 'framer-motion';
+import { generatePDF } from '@/utils/pdfUtils';
 
 export interface Script {
   id: string;
@@ -18,9 +20,10 @@ interface ScriptCardProps {
   script: Script;
   onEdit: (script: Script) => void;
   onDelete: (id: string) => void;
+  onViewDetails?: (script: Script) => void;
 }
 
-const ScriptCard: React.FC<ScriptCardProps> = ({ script, onEdit, onDelete }) => {
+const ScriptCard: React.FC<ScriptCardProps> = ({ script, onEdit, onDelete, onViewDetails }) => {
   const getEstruturanteBg = (estruturante: string) => {
     switch (estruturante) {
       case 'PNCP':
@@ -45,7 +48,8 @@ const ScriptCard: React.FC<ScriptCardProps> = ({ script, onEdit, onDelete }) => 
     }
   };
 
-  const copyToClipboard = () => {
+  const copyToClipboard = (e: React.MouseEvent) => {
+    e.stopPropagation();
     navigator.clipboard.writeText(script.modelo)
       .then(() => {
         toast.success('Script copiado para a área de transferência!');
@@ -55,20 +59,36 @@ const ScriptCard: React.FC<ScriptCardProps> = ({ script, onEdit, onDelete }) => 
       });
   };
 
+  const handleExportPDF = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    generatePDF(script);
+    toast.success('PDF gerado com sucesso!');
+  };
+
   return (
-    <div className="glass p-6 rounded-xl shadow-sm hover-lift">
+    <motion.div 
+      className="glass p-6 rounded-xl shadow-sm hover-lift cursor-pointer"
+      whileHover={{ scale: 1.02 }}
+      onClick={() => onViewDetails && onViewDetails(script)}
+    >
       <div className="flex justify-between items-start mb-3">
         <h3 className="text-lg font-semibold line-clamp-1">{script.nome}</h3>
         <div className="flex space-x-1">
           <button
-            onClick={() => onEdit(script)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(script);
+            }}
             className="p-1.5 rounded-full hover:bg-gray-200 transition-colors"
             aria-label="Editar"
           >
             <Edit size={16} />
           </button>
           <button
-            onClick={() => onDelete(script.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(script.id);
+            }}
             className="p-1.5 rounded-full hover:bg-red-100 hover:text-red-600 transition-colors"
             aria-label="Excluir"
           >
@@ -106,15 +126,24 @@ const ScriptCard: React.FC<ScriptCardProps> = ({ script, onEdit, onDelete }) => 
         <div className="text-xs text-foreground/60">
           Atualizado em {new Date(script.updatedAt).toLocaleDateString('pt-BR')}
         </div>
-        <button
-          onClick={copyToClipboard}
-          className="flex items-center text-xs px-3 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-        >
-          <Copy size={12} className="mr-1.5" />
-          Copiar
-        </button>
+        <div className="flex space-x-2">
+          <button
+            onClick={handleExportPDF}
+            className="flex items-center text-xs px-2 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+          >
+            <FileText size={12} className="mr-1" />
+            PDF
+          </button>
+          <button
+            onClick={copyToClipboard}
+            className="flex items-center text-xs px-2 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+          >
+            <Copy size={12} className="mr-1" />
+            Copiar
+          </button>
+        </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

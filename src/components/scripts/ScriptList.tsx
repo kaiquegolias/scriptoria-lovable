@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import ScriptCard, { Script } from './ScriptCard';
 import ScriptForm from './ScriptForm';
+import ScriptModal from './ScriptModal';
 import { toast } from 'sonner';
 import { Plus, Search } from 'lucide-react';
 import useLocalStorage from '@/hooks/useLocalStorage';
@@ -15,6 +16,7 @@ const ScriptList = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [scriptToEdit, setScriptToEdit] = useState<Script | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedScript, setSelectedScript] = useState<Script | null>(null);
   
   const filteredScripts = scripts.filter(
     (script) =>
@@ -43,6 +45,14 @@ const ScriptList = () => {
       setScripts(scripts.filter((script) => script.id !== id));
       toast.success('Script excluído com sucesso!');
     }
+  };
+
+  const handleViewDetails = (script: Script) => {
+    setSelectedScript(script);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedScript(null);
   };
   
   const handleSaveScript = (
@@ -147,6 +157,7 @@ const ScriptList = () => {
               script={script}
               onEdit={handleEditScript}
               onDelete={handleDeleteScript}
+              onViewDetails={handleViewDetails}
             />
           ))}
         </div>
@@ -157,6 +168,15 @@ const ScriptList = () => {
           onClose={handleCloseForm}
           onSave={handleSaveScript}
           script={scriptToEdit}
+        />
+      )}
+
+      {selectedScript && (
+        <ScriptModal
+          script={selectedScript}
+          onClose={handleCloseModal}
+          onEdit={handleEditScript}
+          onDelete={handleDeleteScript}
         />
       )}
     </div>

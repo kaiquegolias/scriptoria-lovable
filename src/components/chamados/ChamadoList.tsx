@@ -2,10 +2,12 @@
 import React, { useState } from 'react';
 import ChamadoCard, { Chamado } from './ChamadoCard';
 import ChamadoForm from './ChamadoForm';
+import ChamadoModal from './ChamadoModal';
 import { toast } from 'sonner';
 import { Plus, Search, Filter } from 'lucide-react';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { useAuth } from '@/context/AuthContext';
+import { addHours } from 'date-fns';
 
 interface ChamadoListProps {
   encerrados?: boolean;
@@ -22,6 +24,7 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstruturante, setFiltroEstruturante] = useState<string>('');
   const [filtroStatus, setFiltroStatus] = useState<string>('');
+  const [selectedChamado, setSelectedChamado] = useState<Chamado | null>(null);
   
   // Filtrar chamados com base nos critérios
   const chamadosFiltrados = chamados
@@ -72,10 +75,43 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
     }
   };
   
+  const handleReopenChamado = (id: string) => {
+    if (window.confirm('Deseja reabrir este chamado?')) {
+      const chamadoIndex = chamados.findIndex(c => c.id === id);
+      if (chamadoIndex !== -1) {
+        const updatedChamado = {
+          ...chamados[chamadoIndex],
+          status: 'em_andamento' as const,
+          dataAtualizacao: new Date().toISOString()
+        };
+        
+        const newChamados = [...chamados];
+        newChamados[chamadoIndex] = updatedChamado;
+        
+        setChamados(newChamados);
+        toast.success('Chamado reaberto com sucesso!');
+      }
+    }
+  };
+
+  const handleViewDetails = (chamado: Chamado) => {
+    setSelectedChamado(chamado);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedChamado(null);
+  };
+  
   const handleSaveChamado = (
     chamadoData: Omit<Chamado, 'id' | 'dataCriacao' | 'dataAtualizacao'> & { id?: string }
   ) => {
     const now = new Date().toISOString();
+    
+    // Se o status for 'agendados_aguardando', adicionar a data limite (72 horas)
+    let dataLimite;
+    if (chamadoData.status === 'agendados_aguardando') {
+      dataLimite = addHours(new Date(), 72).toISOString();
+    }
     
     if (chamadoData.id) {
       // Atualizar chamado existente
@@ -86,6 +122,10 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
                 ...chamado,
                 ...chamadoData,
                 dataAtualizacao: now,
+                // Manter a data limite existente, caso haja, ou configurar uma nova
+                dataLimite: chamadoData.status === 'agendados_aguardando' 
+                  ? (chamado.status === 'agendados_aguardando' ? chamado.dataLimite : dataLimite)
+                  : undefined,
               }
             : chamado
         )
@@ -103,6 +143,7 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
         links: chamadoData.links,
         dataCriacao: now,
         dataAtualizacao: now,
+        dataLimite: chamadoData.status === 'agendados_aguardando' ? dataLimite : undefined,
       };
       
       setChamados([newChamado, ...chamados]);
@@ -192,9 +233,10 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
               <option value="">Todos</option>
               {!encerrados && (
                 <>
-                  <option value="aberto">Aberto ({statusCount['aberto'] || 0})</option>
+                  <option value="agendados">Agendados ({statusCount['agendados'] || 0})</option>
+                  <option value="agendados_planner">Agendados PLANNER ({statusCount['agendados_planner'] || 0})</option>
+                  <option value="agendados_aguardando">Aguardando devolutiva ({statusCount['agendados_aguardando'] || 0})</option>
                   <option value="em_andamento">Em Andamento ({statusCount['em_andamento'] || 0})</option>
-                  <option value="pendente">Pendente ({statusCount['pendente'] || 0})</option>
                 </>
               )}
               {encerrados && (
@@ -251,6 +293,8 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
               chamado={chamado}
               onEdit={handleEditChamado}
               onFinish={!encerrados ? handleFinishChamado : undefined}
+              onReopen={encerrados ? handleReopenChamado : undefined}
+              onViewDetails={handleViewDetails}
             />
           ))}
         </div>
@@ -261,6 +305,16 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
           onClose={handleCloseForm}
           onSave={handleSaveChamado}
           chamado={chamadoToEdit}
+        />
+      )}
+
+      {selectedChamado && (
+        <ChamadoModal 
+          chamado={selectedChamado} 
+          onClose={handleCloseModal}
+          onEdit={handleEditChamado}
+          onFinish={!encerrados ? handleFinishChamado : undefined}
+          onReopen={encerrados ? handleReopenChamado : undefined}
         />
       )}
     </div>
