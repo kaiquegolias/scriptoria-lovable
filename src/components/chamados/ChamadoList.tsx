@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import ChamadoCard, { Chamado } from './ChamadoCard';
 import ChamadoForm from './ChamadoForm';
@@ -7,7 +6,7 @@ import { toast } from 'sonner';
 import { Plus, Search, Filter } from 'lucide-react';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { useAuth } from '@/context/AuthContext';
-import { addHours } from 'date-fns';
+import { addBusinessDays } from 'date-fns';
 
 interface ChamadoListProps {
   encerrados?: boolean;
@@ -26,7 +25,6 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
   const [filtroStatus, setFiltroStatus] = useState<string>('');
   const [selectedChamado, setSelectedChamado] = useState<Chamado | null>(null);
   
-  // Filtrar chamados com base nos critérios
   const chamadosFiltrados = chamados
     .filter(chamado => encerrados ? chamado.status === 'resolvido' : chamado.status !== 'resolvido')
     .filter(chamado => 
@@ -107,14 +105,12 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
   ) => {
     const now = new Date().toISOString();
     
-    // Se o status for 'agendados_aguardando', adicionar a data limite (72 horas)
     let dataLimite;
     if (chamadoData.status === 'agendados_aguardando') {
-      dataLimite = addHours(new Date(), 72).toISOString();
+      dataLimite = addBusinessDays(new Date(), 3).toISOString();
     }
     
     if (chamadoData.id) {
-      // Atualizar chamado existente
       setChamados(
         chamados.map((chamado) =>
           chamado.id === chamadoData.id
@@ -122,7 +118,6 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
                 ...chamado,
                 ...chamadoData,
                 dataAtualizacao: now,
-                // Manter a data limite existente, caso haja, ou configurar uma nova
                 dataLimite: chamadoData.status === 'agendados_aguardando' 
                   ? (chamado.status === 'agendados_aguardando' ? chamado.dataLimite : dataLimite)
                   : undefined,
@@ -132,7 +127,6 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
       );
       toast.success('Chamado atualizado com sucesso!');
     } else {
-      // Criar novo chamado
       const newChamado: Chamado = {
         id: Math.random().toString(36).substring(2),
         titulo: chamadoData.titulo,
@@ -153,7 +147,6 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
     handleCloseForm();
   };
   
-  // Contagem por estruturante
   const estruturanteCount = chamados
     .filter(chamado => encerrados ? chamado.status === 'resolvido' : chamado.status !== 'resolvido')
     .reduce((acc, chamado) => {
@@ -161,7 +154,6 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
       return acc;
     }, {} as Record<string, number>);
   
-  // Contagem por status
   const statusCount = chamados
     .filter(chamado => encerrados ? chamado.status === 'resolvido' : chamado.status !== 'resolvido')
     .reduce((acc, chamado) => {
