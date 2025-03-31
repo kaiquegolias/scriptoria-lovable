@@ -1,8 +1,10 @@
 
+import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import { supabase } from './integrations/supabase/client'
+import { AuthProvider } from './context/AuthContext'
 
 // Ensure Supabase is initialized
 if (!supabase) {
@@ -15,4 +17,18 @@ if (import.meta.env.DEV) {
   console.log('Supabase Anon Key available:', !!import.meta.env.VITE_SUPABASE_ANON_KEY);
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+const rootElement = document.getElementById('root');
+
+if (!rootElement) {
+  throw new Error('Root element not found');
+}
+
+const root = createRoot(rootElement);
+
+root.render(
+  <React.StrictMode>
+    <AuthProvider>
+      <App />
+    </AuthProvider>
+  </React.StrictMode>
+);
