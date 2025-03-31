@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import ChamadoCard, { Chamado } from './ChamadoCard';
 import ChamadoForm from './ChamadoForm';
@@ -22,7 +21,8 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
     createChamado, 
     updateChamado, 
     finishChamado, 
-    reopenChamado 
+    reopenChamado,
+    deleteChamado
   } = useChamados(encerrados);
   
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -105,6 +105,17 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
     }
     
     handleCloseForm();
+  };
+  
+  const handleDeleteChamado = async (id: string) => {
+    const deleted = await deleteChamado(id);
+    
+    if (deleted) {
+      toast.success('Chamado excluído com sucesso!');
+      if (selectedChamado && selectedChamado.id === id) {
+        setSelectedChamado(null);
+      }
+    }
   };
   
   const estruturanteCount = chamados
@@ -259,6 +270,7 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
               key={chamado.id}
               chamado={chamado}
               onEdit={handleEditChamado}
+              onDelete={handleDeleteChamado}
               onFinish={!encerrados ? handleFinishChamado : undefined}
               onReopen={encerrados ? handleReopenChamado : undefined}
               onViewDetails={handleViewDetails}
@@ -280,6 +292,7 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
           chamado={selectedChamado} 
           onClose={handleCloseModal}
           onEdit={handleEditChamado}
+          onDelete={handleDeleteChamado}
           onFinish={!encerrados ? handleFinishChamado : undefined}
           onReopen={encerrados ? handleReopenChamado : undefined}
         />

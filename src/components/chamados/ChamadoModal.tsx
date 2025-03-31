@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { Chamado } from './ChamadoCard';
-import { X, Edit, CheckCircle, RefreshCw, ExternalLink, Calendar, AlertCircle } from 'lucide-react';
+import { X, Edit, CheckCircle, RefreshCw, ExternalLink, Calendar, AlertCircle, Trash2 } from 'lucide-react';
 import { format, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,6 +9,7 @@ interface ChamadoModalProps {
   chamado: Chamado;
   onClose: () => void;
   onEdit?: (chamado: Chamado) => void;
+  onDelete?: (id: string) => void;
   onFinish?: (id: string) => void;
   onReopen?: (id: string) => void;
 }
@@ -18,10 +18,10 @@ const ChamadoModal: React.FC<ChamadoModalProps> = ({
   chamado, 
   onClose, 
   onEdit, 
+  onDelete,
   onFinish,
   onReopen 
 }) => {
-  // Manipuladores de eventos com prevenção de propagação
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onEdit) {
@@ -42,6 +42,14 @@ const ChamadoModal: React.FC<ChamadoModalProps> = ({
     e.stopPropagation();
     if (onReopen) {
       onReopen(chamado.id);
+      onClose();
+    }
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDelete && window.confirm('Tem certeza que deseja excluir este chamado?')) {
+      onDelete(chamado.id);
       onClose();
     }
   };
@@ -83,7 +91,6 @@ const ChamadoModal: React.FC<ChamadoModalProps> = ({
     }
   };
 
-  // Verificar se o cartão está atrasado (para chamados aguardando devolutiva)
   const isCardDelayed = chamado.status === 'agendados_aguardando' && 
                         chamado.dataLimite && 
                         isAfter(new Date(), new Date(chamado.dataLimite));
@@ -99,7 +106,6 @@ const ChamadoModal: React.FC<ChamadoModalProps> = ({
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.2 }}
         >
-          {/* Cabeçalho */}
           <div className={`p-6 rounded-t-xl ${getStatusColor(chamado.status)}`}>
             <div className="flex justify-between items-start">
               <h2 className="text-xl font-bold">{chamado.titulo}</h2>
@@ -125,7 +131,6 @@ const ChamadoModal: React.FC<ChamadoModalProps> = ({
             </div>
           </div>
 
-          {/* Conteúdo */}
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
@@ -177,7 +182,6 @@ const ChamadoModal: React.FC<ChamadoModalProps> = ({
             </div>
           </div>
 
-          {/* Rodapé com ações */}
           <div className="p-4 bg-secondary/50 rounded-b-xl border-t flex justify-end gap-2">
             {onEdit && (
               <button
@@ -186,6 +190,16 @@ const ChamadoModal: React.FC<ChamadoModalProps> = ({
               >
                 <Edit size={16} className="mr-2" />
                 Editar
+              </button>
+            )}
+            
+            {onDelete && (
+              <button
+                onClick={handleDelete}
+                className="px-4 py-2 rounded-md bg-red-500 text-white hover:bg-red-600 flex items-center transition-colors"
+              >
+                <Trash2 size={16} className="mr-2" />
+                Excluir
               </button>
             )}
             

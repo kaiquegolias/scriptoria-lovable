@@ -9,13 +9,19 @@ const ThemeToggle: React.FC = () => {
   
   return (
     <div className="flex items-center gap-2">
-      <Sun size={16} className="text-yellow-500" />
+      <Sun 
+        size={16} 
+        className={`transition-colors ${theme === 'light' ? 'text-yellow-500' : 'text-gray-400'}`} 
+      />
       <Switch 
         checked={theme === 'dark'} 
         onCheckedChange={toggleTheme} 
         aria-label="Alternar modo escuro"
       />
-      <Moon size={16} className="text-blue-700 dark:text-blue-400" />
+      <Moon 
+        size={16} 
+        className={`transition-colors ${theme === 'dark' ? 'text-blue-400' : 'text-gray-400'}`} 
+      />
     </div>
   );
 };

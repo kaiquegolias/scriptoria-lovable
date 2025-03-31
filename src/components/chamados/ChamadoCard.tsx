@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Edit, ExternalLink, CheckCircle, AlertCircle, Calendar, RefreshCw } from 'lucide-react';
+import { Edit, ExternalLink, CheckCircle, AlertCircle, Calendar, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, addHours, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -22,6 +22,7 @@ export interface Chamado {
 interface ChamadoCardProps {
   chamado: Chamado;
   onEdit: (chamado: Chamado) => void;
+  onDelete: (id: string) => void;
   onFinish?: (id: string) => void;
   onReopen?: (id: string) => void;
   onViewDetails?: (chamado: Chamado) => void;
@@ -30,6 +31,7 @@ interface ChamadoCardProps {
 const ChamadoCard: React.FC<ChamadoCardProps> = ({ 
   chamado, 
   onEdit, 
+  onDelete,
   onFinish, 
   onReopen,
   onViewDetails
@@ -125,6 +127,18 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({
             aria-label="Editar"
           >
             <Edit size={16} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation(); // Evita que o clique propague para o card
+              if (window.confirm('Tem certeza que deseja excluir este chamado?')) {
+                onDelete(chamado.id);
+              }
+            }}
+            className="p-1.5 rounded-full hover:bg-red-100 hover:text-red-600 transition-colors"
+            aria-label="Excluir"
+          >
+            <Trash2 size={16} />
           </button>
           {onFinish && chamado.status !== 'resolvido' && (
             <button
