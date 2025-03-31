@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { FileText, PhoneCall, CheckCircle, Clock, AlertCircle, BarChart3, Activity } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -55,8 +54,8 @@ const Dashboard = () => {
           new Date(c.data_atualizacao).toISOString().split('T')[0] === today
         ).length;
         
-        // Count by estruturante
-        const chamadosByEstruturante = chamados.reduce((acc, chamado) => {
+        // Count only open chamados by estruturante
+        const chamadosByEstruturante = chamadosOpen.reduce((acc, chamado) => {
           acc[chamado.estruturante] = (acc[chamado.estruturante] || 0) + 1;
           return acc;
         }, {} as Record<string, number>);

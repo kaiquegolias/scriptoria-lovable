@@ -26,6 +26,73 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onClose, onSave, chamado }) =
 
   const isEditing = !!chamado;
 
+  // Save form state to local storage when user navigates away
+  useEffect(() => {
+    // Save current form state
+    const saveFormState = () => {
+      const formState = {
+        titulo,
+        status,
+        estruturante,
+        nivel,
+        acompanhamento,
+        links,
+        isEditing,
+        chamadoId: chamado?.id || null
+      };
+      localStorage.setItem('chamadoFormState', JSON.stringify(formState));
+    };
+
+    // Add beforeunload event listener
+    window.addEventListener('beforeunload', saveFormState);
+    
+    // Also save state when component unmounts
+    return () => {
+      saveFormState();
+      window.removeEventListener('beforeunload', saveFormState);
+    };
+  }, [titulo, status, estruturante, nivel, acompanhamento, links, isEditing, chamado?.id]);
+
+  // Load form state from local storage on mount
+  useEffect(() => {
+    const savedState = localStorage.getItem('chamadoFormState');
+    
+    if (savedState) {
+      try {
+        const parsedState = JSON.parse(savedState);
+        
+        // Only restore if it's the same editing context (new form or editing the same chamado)
+        if (
+          (isEditing && parsedState.isEditing && parsedState.chamadoId === chamado?.id) || 
+          (!isEditing && !parsedState.isEditing)
+        ) {
+          setTitulo(parsedState.titulo || '');
+          setStatus(parsedState.status || 'agendados');
+          setEstruturante(parsedState.estruturante || 'Outros');
+          setNivel(parsedState.nivel || 'N1');
+          setAcompanhamento(parsedState.acompanhamento || '');
+          setLinks(parsedState.links || ['']);
+          
+          toast.info('Seu progresso anterior foi restaurado', {
+            description: 'Continue de onde parou',
+            duration: 3000
+          });
+        }
+      } catch (error) {
+        console.error('Error parsing saved form state:', error);
+      }
+    }
+    
+    // Clean up local storage after successful form submission
+    const handleFormSubmit = () => {
+      localStorage.removeItem('chamadoFormState');
+    };
+    
+    return () => {
+      document.removeEventListener('chamadoFormSubmitted', handleFormSubmit);
+    };
+  }, []);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -48,6 +115,10 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onClose, onSave, chamado }) =
     };
     
     onSave(chamadoData);
+    
+    // Dispatch event to clear localStorage
+    document.dispatchEvent(new Event('chamadoFormSubmitted'));
+    localStorage.removeItem('chamadoFormState');
   };
 
   const addLink = () => {
@@ -66,14 +137,14 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onClose, onSave, chamado }) =
 
   return (
     <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-lg w-full max-w-4xl max-h-[90vh] overflow-auto animate-slide-in">
-        <div className="sticky top-0 bg-white p-6 border-b flex justify-between items-center">
+      <div className="bg-white rounded-2xl shadow-lg w-full max-w-4xl max-h-[90vh] overflow-auto animate-slide-in dark:bg-gray-800">
+        <div className="sticky top-0 bg-white dark:bg-gray-800 p-6 border-b flex justify-between items-center">
           <h2 className="text-xl font-semibold">
             {isEditing ? 'Editar Chamado' : 'Novo Chamado'}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
             <X size={20} />
           </button>
@@ -90,7 +161,7 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onClose, onSave, chamado }) =
                 type="text"
                 value={titulo}
                 onChange={(e) => setTitulo(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all"
+                className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all dark:bg-gray-700 dark:border-gray-600"
                 placeholder="Digite um título descritivo"
                 required
               />
@@ -104,7 +175,7 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onClose, onSave, chamado }) =
                 id="status"
                 value={status}
                 onChange={(e) => setStatus(e.target.value as 'agendados' | 'agendados_planner' | 'agendados_aguardando' | 'em_andamento' | 'resolvido')}
-                className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all text-foreground"
+                className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all text-foreground dark:bg-gray-700 dark:border-gray-600"
               >
                 <option value="agendados">Agendados</option>
                 <option value="agendados_planner">Agendados PLANNER</option>
@@ -122,7 +193,7 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onClose, onSave, chamado }) =
                 id="estruturante"
                 value={estruturante}
                 onChange={(e) => setEstruturante(e.target.value as 'PNCP' | 'PEN' | 'Outros')}
-                className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all text-foreground"
+                className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all text-foreground dark:bg-gray-700 dark:border-gray-600"
               >
                 <option value="PNCP">PNCP</option>
                 <option value="PEN">PEN</option>
@@ -138,7 +209,7 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onClose, onSave, chamado }) =
                 id="nivel"
                 value={nivel}
                 onChange={(e) => setNivel(e.target.value as 'N1' | 'N2' | 'N3')}
-                className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all text-foreground"
+                className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all text-foreground dark:bg-gray-700 dark:border-gray-600"
               >
                 <option value="N1">N1</option>
                 <option value="N2">N2</option>
@@ -155,7 +226,7 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onClose, onSave, chamado }) =
               id="acompanhamento"
               value={acompanhamento}
               onChange={(e) => setAcompanhamento(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all min-h-[120px] text-foreground"
+              className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all min-h-[120px] text-foreground dark:bg-gray-700 dark:border-gray-600"
               placeholder="Informações de acompanhamento do chamado"
             />
           </div>
@@ -181,13 +252,13 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onClose, onSave, chamado }) =
                   type="text"
                   value={link}
                   onChange={(e) => updateLink(index, e.target.value)}
-                  className="flex-1 px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all text-foreground"
+                  className="flex-1 px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all text-foreground dark:bg-gray-700 dark:border-gray-600"
                   placeholder="https://exemplo.com"
                 />
                 <button
                   type="button"
                   onClick={() => removeLink(index)}
-                  className="p-2.5 rounded-lg border border-gray-200 hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-colors"
+                  className="p-2.5 rounded-lg border border-gray-200 hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-colors dark:border-gray-600 dark:hover:bg-red-900/20"
                 >
                   <Trash2 size={18} />
                 </button>
@@ -199,7 +270,7 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onClose, onSave, chamado }) =
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-lg border hover:bg-gray-50 font-medium transition-colors"
+              className="px-5 py-2.5 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-600 font-medium transition-colors"
             >
               Cancelar
             </button>

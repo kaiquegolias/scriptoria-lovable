@@ -1,127 +1,67 @@
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Route, Routes, Link, useLocation } from 'react-router-dom';
+import { Toaster } from 'sonner';
+import { FileText, LogIn, LogOut, Menu, User, UserCircle2, X } from 'lucide-react';
 
-import React from 'react';
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
-import Index from "./pages/Index";
-import Dashboard from "./pages/Dashboard";
-import Scripts from "./pages/Scripts";
-import Chamados from "./pages/Chamados";
-import ChamadosEncerrados from "./pages/ChamadosEncerrados";
-import NotFound from "./pages/NotFound";
-import Navbar from './components/layout/Navbar';
-import Footer from './components/layout/Footer';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import Index from '@/pages/Index';
+import Dashboard from '@/pages/Dashboard';
+import Scripts from '@/pages/Scripts';
+import Chamados from '@/pages/Chamados';
+import ChamadosEncerrados from '@/pages/ChamadosEncerrados';
+import Profile from '@/pages/Profile';
+import NotFound from '@/pages/NotFound';
 
-// Adiciona a biblioteca framer-motion para animações
-import { AnimatePresence, motion } from 'framer-motion';
-import { ThemeProvider } from './context/ThemeContext';
+import Navbar from '@/components/layout/Navbar';
+import Footer from '@/components/layout/Footer';
+import ThemeToggle from '@/components/layout/ThemeToggle';
+import { ThemeProvider } from '@/context/ThemeContext';
 
-const queryClient = new QueryClient();
+function App() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-// Componente de proteção de rota
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
-  const location = useLocation();
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (!isMobile) {
+        setSidebarOpen(false);
+      }
+    };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isMobile]);
 
-  if (!isAuthenticated) {
-    return <Navigate to="/" state={{ from: location }} replace />;
-  }
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
 
-  return <>{children}</>;
-};
+  const closeSidebar = () => {
+    setSidebarOpen(false);
+  };
 
-// Componente de layout
-const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const location = useLocation();
-  
-  // Não mostrar o layout na página inicial (login/registro)
-  if (location.pathname === '/') {
-    return <>{children}</>;
-  }
-  
   return (
-    <div className="flex flex-col min-h-screen">
-      <Navbar />
-      <main className="flex-1 pb-12">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            {children}
-          </motion.div>
-        </AnimatePresence>
-      </main>
-      <Footer />
-    </div>
+    <Router>
+      <ThemeProvider>
+        <div className="flex flex-col min-h-screen bg-background text-foreground">
+          <Navbar />
+          <main className="flex-1">
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/scripts" element={<Scripts />} />
+              <Route path="/chamados" element={<Chamados />} />
+              <Route path="/chamados-encerrados" element={<ChamadosEncerrados />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </main>
+          <Footer />
+          <Toaster position="bottom-right" />
+        </div>
+      </ThemeProvider>
+    </Router>
   );
-};
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <TooltipProvider>
-            <Layout>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <Dashboard />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/scripts"
-                  element={
-                    <ProtectedRoute>
-                      <Scripts />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/chamados"
-                  element={
-                    <ProtectedRoute>
-                      <Chamados />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/chamados-encerrados"
-                  element={
-                    <ProtectedRoute>
-                      <ChamadosEncerrados />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Layout>
-            <Toaster />
-            <Sonner />
-          </TooltipProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </ThemeProvider>
-  </QueryClientProvider>
-);
+}
 
 export default App;
