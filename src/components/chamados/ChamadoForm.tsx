@@ -1,284 +1,303 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
-import { Chamado } from './ChamadoCard';
+import { X, Plus, Trash } from 'lucide-react';
 import { toast } from 'sonner';
+import { Chamado } from './ChamadoCard';
 
 interface ChamadoFormProps {
-  onClose: () => void;
   onSave: (chamado: Omit<Chamado, 'id' | 'dataCriacao' | 'dataAtualizacao'> & { id?: string }) => void;
+  onClose: () => void;
   chamado?: Chamado;
 }
 
-const ChamadoForm: React.FC<ChamadoFormProps> = ({ onClose, onSave, chamado }) => {
-  const [titulo, setTitulo] = useState(chamado?.titulo || '');
-  const [status, setStatus] = useState<'agendados' | 'agendados_planner' | 'agendados_aguardando' | 'em_andamento' | 'resolvido'>(
-    chamado?.status || 'agendados'
-  );
-  const [estruturante, setEstruturante] = useState<'PNCP' | 'PEN' | 'Outros'>(
-    chamado?.estruturante || 'Outros'
-  );
-  const [nivel, setNivel] = useState<'N1' | 'N2' | 'N3'>(
-    chamado?.nivel || 'N1'
-  );
-  const [acompanhamento, setAcompanhamento] = useState(chamado?.acompanhamento || '');
-  const [links, setLinks] = useState<string[]>(chamado?.links || ['']);
+const STATUS_OPTIONS = [
+  { value: 'agendados', label: 'Agendados' },
+  { value: 'agendados_planner', label: 'Agendados PLANNER' },
+  { value: 'agendados_aguardando', label: 'Aguardando devolutiva' },
+  { value: 'em_andamento', label: 'Em andamento' }
+];
 
+const ESTRUTURANTES_OPTIONS = [
+  { value: 'PNCP', label: 'PNCP' },
+  { value: 'PEN', label: 'PEN' },
+  { value: 'Outros', label: 'Outros' }
+];
+
+const NIVEL_OPTIONS = [
+  { value: 'N1', label: 'N1' },
+  { value: 'N2', label: 'N2' },
+  { value: 'N3', label: 'N3' }
+];
+
+const STORAGE_KEY = 'chamadoFormState';
+
+const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) => {
   const isEditing = !!chamado;
-
-  // Save form state to local storage when user navigates away
-  useEffect(() => {
-    // Save current form state
-    const saveFormState = () => {
-      const formState = {
-        titulo,
-        status,
-        estruturante,
-        nivel,
-        acompanhamento,
-        links,
-        isEditing,
-        chamadoId: chamado?.id || null
-      };
-      localStorage.setItem('chamadoFormState', JSON.stringify(formState));
-    };
-
-    // Add beforeunload event listener
-    window.addEventListener('beforeunload', saveFormState);
-    
-    // Also save state when component unmounts
-    return () => {
-      saveFormState();
-      window.removeEventListener('beforeunload', saveFormState);
-    };
-  }, [titulo, status, estruturante, nivel, acompanhamento, links, isEditing, chamado?.id]);
-
-  // Load form state from local storage on mount
-  useEffect(() => {
-    const savedState = localStorage.getItem('chamadoFormState');
-    
-    if (savedState) {
-      try {
-        const parsedState = JSON.parse(savedState);
-        
-        // Only restore if it's the same editing context (new form or editing the same chamado)
-        if (
-          (isEditing && parsedState.isEditing && parsedState.chamadoId === chamado?.id) || 
-          (!isEditing && !parsedState.isEditing)
-        ) {
-          setTitulo(parsedState.titulo || '');
-          setStatus(parsedState.status || 'agendados');
-          setEstruturante(parsedState.estruturante || 'Outros');
-          setNivel(parsedState.nivel || 'N1');
-          setAcompanhamento(parsedState.acompanhamento || '');
-          setLinks(parsedState.links || ['']);
-          
-          toast.info('Seu progresso anterior foi restaurado', {
-            description: 'Continue de onde parou',
-            duration: 3000
-          });
+  
+  const [formState, setFormState] = useState<Omit<Chamado, 'id' | 'dataCriacao' | 'dataAtualizacao'> & { id?: string }>(() => {
+    // Try to restore form state from localStorage if not editing
+    if (!isEditing) {
+      const savedState = localStorage.getItem(STORAGE_KEY);
+      if (savedState) {
+        try {
+          return JSON.parse(savedState);
+        } catch (e) {
+          console.error("Failed to parse saved form state:", e);
         }
-      } catch (error) {
-        console.error('Error parsing saved form state:', error);
       }
     }
     
-    // Clean up local storage after successful form submission
-    const handleFormSubmit = () => {
-      localStorage.removeItem('chamadoFormState');
+    // Default state or editing state
+    return chamado ? {
+      id: chamado.id,
+      titulo: chamado.titulo,
+      status: chamado.status,
+      estruturante: chamado.estruturante,
+      nivel: chamado.nivel,
+      acompanhamento: chamado.acompanhamento,
+      links: chamado.links || [],
+      dataLimite: chamado.dataLimite
+    } : {
+      titulo: '',
+      status: 'em_andamento',
+      estruturante: 'PNCP',
+      nivel: 'N1',
+      acompanhamento: '',
+      links: [],
+      dataLimite: null
     };
-    
-    return () => {
-      document.removeEventListener('chamadoFormSubmitted', handleFormSubmit);
-    };
-  }, []);
+  });
+  
+  const [newLink, setNewLink] = useState('');
+  
+  // Save form state to localStorage when it changes
+  useEffect(() => {
+    if (!isEditing) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(formState));
+    }
+  }, [formState, isEditing]);
+  
+  // Clear saved state when form is submitted or closed
+  const cleanup = () => {
+    localStorage.removeItem(STORAGE_KEY);
+  };
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormState(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddLink = () => {
+    if (!newLink.trim()) return;
+    
+    setFormState(prev => ({
+      ...prev,
+      links: [...prev.links, newLink]
+    }));
+    setNewLink('');
+  };
+  
+  const handleRemoveLink = (indexToRemove: number) => {
+    setFormState(prev => ({
+      ...prev,
+      links: prev.links.filter((_, index) => index !== indexToRemove)
+    }));
+  };
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!titulo.trim()) {
-      toast.error('O título do chamado é obrigatório');
+    if (!formState.titulo) {
+      toast.error('O título é obrigatório');
       return;
     }
     
-    // Filtra links vazios
-    const filteredLinks = links.filter(link => link.trim() !== '');
+    if (!formState.acompanhamento) {
+      toast.error('O acompanhamento é obrigatório');
+      return;
+    }
     
-    const chamadoData = {
-      ...(chamado?.id ? { id: chamado.id } : {}),
-      titulo,
-      status,
-      estruturante,
-      nivel,
-      acompanhamento,
-      links: filteredLinks,
-    };
-    
-    onSave(chamadoData);
-    
-    // Dispatch event to clear localStorage
-    document.dispatchEvent(new Event('chamadoFormSubmitted'));
-    localStorage.removeItem('chamadoFormState');
+    onSave(formState);
+    cleanup();
   };
-
-  const addLink = () => {
-    setLinks([...links, '']);
-  };
-
-  const removeLink = (index: number) => {
-    setLinks(links.filter((_, i) => i !== index));
-  };
-
-  const updateLink = (index: number, value: string) => {
-    const newLinks = [...links];
-    newLinks[index] = value;
-    setLinks(newLinks);
+  
+  const handleClose = () => {
+    if (
+      formState.titulo.trim() !== '' || 
+      formState.acompanhamento.trim() !== '' ||
+      formState.links.length > 0
+    ) {
+      if (!window.confirm('Tem certeza que deseja fechar o formulário? Os dados não salvos serão perdidos.')) {
+        return;
+      }
+      cleanup();
+    }
+    onClose();
   };
 
   return (
-    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-lg w-full max-w-4xl max-h-[90vh] overflow-auto animate-slide-in dark:bg-gray-800">
-        <div className="sticky top-0 bg-white dark:bg-gray-800 p-6 border-b flex justify-between items-center">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-card w-full max-w-2xl rounded-lg shadow-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-4 border-b">
           <h2 className="text-xl font-semibold">
             {isEditing ? 'Editar Chamado' : 'Novo Chamado'}
           </h2>
           <button
-            onClick={onClose}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            onClick={handleClose}
+            className="text-foreground/70 hover:text-foreground p-1 rounded-full"
           >
             <X size={20} />
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2 md:col-span-2">
-              <label htmlFor="titulo" className="block text-sm font-medium">
-                Título do Chamado <span className="text-red-500">*</span>
+        <form onSubmit={handleSubmit} className="p-4">
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="titulo" className="block text-sm font-medium mb-1">
+                Título*
               </label>
               <input
-                id="titulo"
                 type="text"
-                value={titulo}
-                onChange={(e) => setTitulo(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all dark:bg-gray-700 dark:border-gray-600"
-                placeholder="Digite um título descritivo"
+                id="titulo"
+                name="titulo"
+                value={formState.titulo}
+                onChange={handleChange}
+                className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               />
             </div>
             
-            <div className="space-y-2">
-              <label htmlFor="status" className="block text-sm font-medium">
-                Status
-              </label>
-              <select
-                id="status"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as 'agendados' | 'agendados_planner' | 'agendados_aguardando' | 'em_andamento' | 'resolvido')}
-                className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all text-foreground dark:bg-gray-700 dark:border-gray-600"
-              >
-                <option value="agendados">Agendados</option>
-                <option value="agendados_planner">Agendados PLANNER</option>
-                <option value="agendados_aguardando">Aguardando devolutiva</option>
-                <option value="em_andamento">Em Andamento</option>
-                <option value="resolvido">Resolvido</option>
-              </select>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label htmlFor="status" className="block text-sm font-medium mb-1">
+                  Status
+                </label>
+                <select
+                  id="status"
+                  name="status"
+                  value={formState.status}
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  {STATUS_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label htmlFor="estruturante" className="block text-sm font-medium mb-1">
+                  Estruturante
+                </label>
+                <select
+                  id="estruturante"
+                  name="estruturante"
+                  value={formState.estruturante}
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  {ESTRUTURANTES_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label htmlFor="nivel" className="block text-sm font-medium mb-1">
+                  Nível
+                </label>
+                <select
+                  id="nivel"
+                  name="nivel"
+                  value={formState.nivel}
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  {NIVEL_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             
-            <div className="space-y-2">
-              <label htmlFor="estruturante" className="block text-sm font-medium">
-                Estruturante
+            <div>
+              <label htmlFor="acompanhamento" className="block text-sm font-medium mb-1">
+                Acompanhamento*
               </label>
-              <select
-                id="estruturante"
-                value={estruturante}
-                onChange={(e) => setEstruturante(e.target.value as 'PNCP' | 'PEN' | 'Outros')}
-                className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all text-foreground dark:bg-gray-700 dark:border-gray-600"
-              >
-                <option value="PNCP">PNCP</option>
-                <option value="PEN">PEN</option>
-                <option value="Outros">Outros</option>
-              </select>
+              <textarea
+                id="acompanhamento"
+                name="acompanhamento"
+                value={formState.acompanhamento}
+                onChange={handleChange}
+                className="w-full p-2 border rounded-md h-32 resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                required
+              />
             </div>
             
-            <div className="space-y-2">
-              <label htmlFor="nivel" className="block text-sm font-medium">
-                Nível
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Links relacionados
               </label>
-              <select
-                id="nivel"
-                value={nivel}
-                onChange={(e) => setNivel(e.target.value as 'N1' | 'N2' | 'N3')}
-                className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all text-foreground dark:bg-gray-700 dark:border-gray-600"
-              >
-                <option value="N1">N1</option>
-                <option value="N2">N2</option>
-                <option value="N3">N3</option>
-              </select>
-            </div>
-          </div>
-          
-          <div className="space-y-2">
-            <label htmlFor="acompanhamento" className="block text-sm font-medium">
-              Acompanhamento
-            </label>
-            <textarea
-              id="acompanhamento"
-              value={acompanhamento}
-              onChange={(e) => setAcompanhamento(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all min-h-[120px] text-foreground dark:bg-gray-700 dark:border-gray-600"
-              placeholder="Informações de acompanhamento do chamado"
-            />
-          </div>
-          
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <label className="block text-sm font-medium">
-                Links
-              </label>
-              <button
-                type="button"
-                onClick={addLink}
-                className="text-sm flex items-center text-primary hover:text-primary/80"
-              >
-                <Plus size={16} className="mr-1" />
-                Adicionar Link
-              </button>
-            </div>
-            
-            {links.map((link, index) => (
-              <div key={index} className="flex items-center space-x-2">
+              <div className="flex">
                 <input
                   type="text"
-                  value={link}
-                  onChange={(e) => updateLink(index, e.target.value)}
-                  className="flex-1 px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all text-foreground dark:bg-gray-700 dark:border-gray-600"
-                  placeholder="https://exemplo.com"
+                  value={newLink}
+                  onChange={(e) => setNewLink(e.target.value)}
+                  className="flex-1 p-2 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Adicionar link"
                 />
                 <button
                   type="button"
-                  onClick={() => removeLink(index)}
-                  className="p-2.5 rounded-lg border border-gray-200 hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-colors dark:border-gray-600 dark:hover:bg-red-900/20"
+                  onClick={handleAddLink}
+                  className="bg-primary text-white px-3 py-2 rounded-r-md"
                 >
-                  <Trash2 size={18} />
+                  <Plus size={16} />
                 </button>
               </div>
-            ))}
+              
+              <div className="mt-2 space-y-2">
+                {formState.links.map((link, index) => (
+                  <div key={index} className="flex items-center bg-background p-2 rounded-md">
+                    <a
+                      href={link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 truncate text-primary hover:underline"
+                    >
+                      {link}
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveLink(index)}
+                      className="ml-2 text-red-500 hover:text-red-700"
+                    >
+                      <Trash size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
           
-          <div className="flex justify-end space-x-3 pt-4">
+          <div className="flex justify-end gap-2 mt-6">
             <button
               type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-600 font-medium transition-colors"
+              onClick={handleClose}
+              className="px-4 py-2 border rounded-md hover:bg-accent"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
+              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
             >
-              {isEditing ? 'Atualizar' : 'Salvar'}
+              {isEditing ? 'Atualizar' : 'Criar'}
             </button>
           </div>
         </form>

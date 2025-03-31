@@ -6,7 +6,7 @@ import ThemeToggle from './ThemeToggle';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 const Navbar = () => {
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -26,7 +26,7 @@ const Navbar = () => {
   };
 
   const handleLogout = async () => {
-    await logout();
+    await signOut();
     navigate('/');
   };
   

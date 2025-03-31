@@ -1,221 +1,229 @@
 
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { Script } from './ScriptCard';
 import { toast } from 'sonner';
+import { Script } from './ScriptCard';
 
 interface ScriptFormProps {
-  onClose: () => void;
   onSave: (script: Omit<Script, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) => void;
+  onClose: () => void;
   script?: Script;
 }
 
-const ScriptForm: React.FC<ScriptFormProps> = ({ onClose, onSave, script }) => {
-  const [nome, setNome] = useState(script?.nome || '');
-  const [estruturante, setEstruturante] = useState<'PNCP' | 'PEN' | 'Outros'>(
-    script?.estruturante || 'Outros'
-  );
-  const [nivel, setNivel] = useState<'N1' | 'N2' | 'N3'>(
-    script?.nivel || 'N1'
-  );
-  const [situacao, setSituacao] = useState(script?.situacao || '');
-  const [modelo, setModelo] = useState(script?.modelo || '');
+const ESTRUTURANTES_OPTIONS = [
+  { value: 'PNCP', label: 'PNCP' },
+  { value: 'PEN', label: 'PEN' },
+  { value: 'Outros', label: 'Outros' }
+];
 
+const NIVEL_OPTIONS = [
+  { value: 'N1', label: 'N1' },
+  { value: 'N2', label: 'N2' },
+  { value: 'N3', label: 'N3' }
+];
+
+const STORAGE_KEY = 'scriptFormState';
+
+const ScriptForm: React.FC<ScriptFormProps> = ({ onSave, onClose, script }) => {
   const isEditing = !!script;
-
-  // Save form state to local storage when user navigates away
-  useEffect(() => {
-    // Save current form state
-    const saveFormState = () => {
-      const formState = {
-        nome,
-        estruturante,
-        nivel,
-        situacao,
-        modelo,
-        isEditing,
-        scriptId: script?.id || null
-      };
-      localStorage.setItem('scriptFormState', JSON.stringify(formState));
-    };
-
-    // Add beforeunload event listener
-    window.addEventListener('beforeunload', saveFormState);
-    
-    // Also save state when component unmounts
-    return () => {
-      saveFormState();
-      window.removeEventListener('beforeunload', saveFormState);
-    };
-  }, [nome, estruturante, nivel, situacao, modelo, isEditing, script?.id]);
-
-  // Load form state from local storage on mount
-  useEffect(() => {
-    const savedState = localStorage.getItem('scriptFormState');
-    
-    if (savedState) {
-      try {
-        const parsedState = JSON.parse(savedState);
-        
-        // Only restore if it's the same editing context (new form or editing the same script)
-        if (
-          (isEditing && parsedState.isEditing && parsedState.scriptId === script?.id) || 
-          (!isEditing && !parsedState.isEditing)
-        ) {
-          setNome(parsedState.nome || '');
-          setEstruturante(parsedState.estruturante || 'Outros');
-          setNivel(parsedState.nivel || 'N1');
-          setSituacao(parsedState.situacao || '');
-          setModelo(parsedState.modelo || '');
-          
-          toast.info('Seu progresso anterior foi restaurado', {
-            description: 'Continue de onde parou',
-            duration: 3000
-          });
+  
+  const [formState, setFormState] = useState<Omit<Script, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }>(() => {
+    // Try to restore form state from localStorage if not editing
+    if (!isEditing) {
+      const savedState = localStorage.getItem(STORAGE_KEY);
+      if (savedState) {
+        try {
+          return JSON.parse(savedState);
+        } catch (e) {
+          console.error("Failed to parse saved form state:", e);
         }
-      } catch (error) {
-        console.error('Error parsing saved form state:', error);
       }
     }
     
-    // Clean up local storage after successful form submission
-    const handleFormSubmit = () => {
-      localStorage.removeItem('scriptFormState');
+    // Default state or editing state
+    return script ? {
+      id: script.id,
+      nome: script.nome,
+      estruturante: script.estruturante,
+      nivel: script.nivel,
+      situacao: script.situacao,
+      modelo: script.modelo
+    } : {
+      nome: '',
+      estruturante: 'PNCP',
+      nivel: 'N1',
+      situacao: '',
+      modelo: ''
     };
-    
-    return () => {
-      document.removeEventListener('scriptFormSubmitted', handleFormSubmit);
-    };
-  }, []);
+  });
+  
+  // Save form state to localStorage when it changes
+  useEffect(() => {
+    if (!isEditing) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(formState));
+    }
+  }, [formState, isEditing]);
+  
+  // Clear saved state when form is submitted or closed
+  const cleanup = () => {
+    localStorage.removeItem(STORAGE_KEY);
+  };
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormState(prev => ({ ...prev, [name]: value }));
+  };
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!nome.trim()) {
-      toast.error('O nome do script é obrigatório');
+    if (!formState.nome) {
+      toast.error('O nome é obrigatório');
       return;
     }
     
-    const scriptData = {
-      ...(script?.id ? { id: script.id } : {}),
-      nome,
-      estruturante,
-      nivel,
-      situacao,
-      modelo
-    };
+    if (!formState.situacao) {
+      toast.error('A situação de uso é obrigatória');
+      return;
+    }
     
-    onSave(scriptData);
+    if (!formState.modelo) {
+      toast.error('O modelo de resposta é obrigatório');
+      return;
+    }
     
-    // Dispatch event to clear localStorage
-    document.dispatchEvent(new Event('scriptFormSubmitted'));
-    localStorage.removeItem('scriptFormState');
+    onSave(formState);
+    cleanup();
   };
   
+  const handleClose = () => {
+    if (
+      formState.nome.trim() !== '' || 
+      formState.situacao.trim() !== '' ||
+      formState.modelo.trim() !== ''
+    ) {
+      if (!window.confirm('Tem certeza que deseja fechar o formulário? Os dados não salvos serão perdidos.')) {
+        return;
+      }
+      cleanup();
+    }
+    onClose();
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-lg w-full max-w-4xl max-h-[90vh] overflow-auto animate-slide-in dark:bg-gray-800">
-        <div className="sticky top-0 bg-white dark:bg-gray-800 p-6 border-b flex justify-between items-center">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-card w-full max-w-2xl rounded-lg shadow-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-4 border-b">
           <h2 className="text-xl font-semibold">
             {isEditing ? 'Editar Script' : 'Novo Script'}
           </h2>
           <button
-            onClick={onClose}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            onClick={handleClose}
+            className="text-foreground/70 hover:text-foreground p-1 rounded-full"
           >
             <X size={20} />
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2 md:col-span-2">
-              <label htmlFor="nome" className="block text-sm font-medium">
-                Nome do Script <span className="text-red-500">*</span>
+        <form onSubmit={handleSubmit} className="p-4">
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="nome" className="block text-sm font-medium mb-1">
+                Nome*
               </label>
               <input
-                id="nome"
                 type="text"
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all dark:bg-gray-700 dark:border-gray-600"
-                placeholder="Digite um nome descritivo"
+                id="nome"
+                name="nome"
+                value={formState.nome}
+                onChange={handleChange}
+                className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               />
             </div>
             
-            <div className="space-y-2">
-              <label htmlFor="estruturante" className="block text-sm font-medium">
-                Estruturante
-              </label>
-              <select
-                id="estruturante"
-                value={estruturante}
-                onChange={(e) => setEstruturante(e.target.value as 'PNCP' | 'PEN' | 'Outros')}
-                className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all text-foreground dark:bg-gray-700 dark:border-gray-600"
-              >
-                <option value="PNCP">PNCP</option>
-                <option value="PEN">PEN</option>
-                <option value="Outros">Outros</option>
-              </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="estruturante" className="block text-sm font-medium mb-1">
+                  Estruturante
+                </label>
+                <select
+                  id="estruturante"
+                  name="estruturante"
+                  value={formState.estruturante}
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  {ESTRUTURANTES_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label htmlFor="nivel" className="block text-sm font-medium mb-1">
+                  Nível
+                </label>
+                <select
+                  id="nivel"
+                  name="nivel"
+                  value={formState.nivel}
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  {NIVEL_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             
-            <div className="space-y-2">
-              <label htmlFor="nivel" className="block text-sm font-medium">
-                Nível
+            <div>
+              <label htmlFor="situacao" className="block text-sm font-medium mb-1">
+                Situação de Uso*
               </label>
-              <select
-                id="nivel"
-                value={nivel}
-                onChange={(e) => setNivel(e.target.value as 'N1' | 'N2' | 'N3')}
-                className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all text-foreground dark:bg-gray-700 dark:border-gray-600"
-              >
-                <option value="N1">N1</option>
-                <option value="N2">N2</option>
-                <option value="N3">N3</option>
-              </select>
+              <textarea
+                id="situacao"
+                name="situacao"
+                value={formState.situacao}
+                onChange={handleChange}
+                className="w-full p-2 border rounded-md h-24 resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                required
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="modelo" className="block text-sm font-medium mb-1">
+                Modelo de Resposta*
+              </label>
+              <textarea
+                id="modelo"
+                name="modelo"
+                value={formState.modelo}
+                onChange={handleChange}
+                className="w-full p-2 border rounded-md h-48 resize-none focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
+                required
+              />
             </div>
           </div>
           
-          <div className="space-y-2">
-            <label htmlFor="situacao" className="block text-sm font-medium">
-              Situação
-            </label>
-            <textarea
-              id="situacao"
-              value={situacao}
-              onChange={(e) => setSituacao(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all min-h-[100px] dark:bg-gray-700 dark:border-gray-600"
-              placeholder="Descreva a situação"
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <label htmlFor="modelo" className="block text-sm font-medium">
-              Modelo de Script
-            </label>
-            <textarea
-              id="modelo"
-              value={modelo}
-              onChange={(e) => setModelo(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all min-h-[200px] font-mono text-sm dark:bg-gray-700 dark:border-gray-600"
-              placeholder="Cole aqui o modelo de script"
-            />
-          </div>
-          
-          <div className="flex justify-end space-x-3 pt-4">
+          <div className="flex justify-end gap-2 mt-6">
             <button
               type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-600 font-medium transition-colors"
+              onClick={handleClose}
+              className="px-4 py-2 border rounded-md hover:bg-accent"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
+              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
             >
-              {isEditing ? 'Atualizar' : 'Salvar'}
+              {isEditing ? 'Atualizar' : 'Criar'}
             </button>
           </div>
         </form>

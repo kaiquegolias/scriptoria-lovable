@@ -51,6 +51,36 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          cargo: string | null
+          created_at: string
+          empresa: string | null
+          nome: string | null
+          telefone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cargo?: string | null
+          created_at?: string
+          empresa?: string | null
+          nome?: string | null
+          telefone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cargo?: string | null
+          created_at?: string
+          empresa?: string | null
+          nome?: string | null
+          telefone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       scripts: {
         Row: {
           created_at: string
