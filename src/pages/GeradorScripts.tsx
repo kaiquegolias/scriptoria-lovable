@@ -107,80 +107,80 @@ const GeradorScripts = () => {
 
   const generateWord = () => {
     try {
-      const doc = new Document();
-      
-      doc.addSection({
-        properties: {},
-        children: [
-          new Paragraph({
-            text: scriptModelo.titulo,
-            heading: HeadingLevel.HEADING_1
-          }),
-          
-          new Paragraph({
-            text: "Situação:",
-            heading: HeadingLevel.HEADING_2
-          }),
-          new Paragraph({
-            text: scriptModelo.situacao || "Não especificado"
-          }),
-          
-          new Paragraph({
-            text: "Quando Ocorre:",
-            heading: HeadingLevel.HEADING_2
-          }),
-          new Paragraph({
-            text: scriptModelo.quandoOcorre || "Não especificado"
-          }),
-          
-          new Paragraph({
-            text: "Solução Sugerida:",
-            heading: HeadingLevel.HEADING_2
-          }),
-          new Paragraph({
-            text: scriptModelo.solucaoSugerida || "Não especificado"
-          }),
-          
-          new Paragraph({
-            text: "Modelo de Resposta:",
-            heading: HeadingLevel.HEADING_2
-          }),
-          new Paragraph({
-            text: scriptModelo.modeloResposta || "Não especificado"
-          }),
-          
-          new Paragraph({
-            text: "Atribuições:",
-            heading: HeadingLevel.HEADING_2
-          }),
-          new Paragraph({
-            text: scriptModelo.atribuicoes || "Não especificado"
-          }),
-          
-          new Paragraph({
-            text: "Perfil do Usuário:",
-            heading: HeadingLevel.HEADING_2
-          }),
-          new Paragraph({
-            text: scriptModelo.perfilUsuario || "Não especificado"
-          }),
-          
-          new Paragraph({
-            text: "Palavras-chave:",
-            heading: HeadingLevel.HEADING_2
-          }),
-          new Paragraph({
-            text: scriptModelo.palavrasChave || "Não especificado"
-          }),
-          
-          new Paragraph({
-            text: "Referências:",
-            heading: HeadingLevel.HEADING_2
-          }),
-          new Paragraph({
-            text: scriptModelo.referencias || "Não especificado"
-          }),
-        ],
+      const doc = new Document({
+        sections: [{
+          properties: {},
+          children: [
+            new Paragraph({
+              text: scriptModelo.titulo,
+              heading: HeadingLevel.HEADING_1
+            }),
+            
+            new Paragraph({
+              text: "Situação:",
+              heading: HeadingLevel.HEADING_2
+            }),
+            new Paragraph({
+              text: scriptModelo.situacao || "Não especificado"
+            }),
+            
+            new Paragraph({
+              text: "Quando Ocorre:",
+              heading: HeadingLevel.HEADING_2
+            }),
+            new Paragraph({
+              text: scriptModelo.quandoOcorre || "Não especificado"
+            }),
+            
+            new Paragraph({
+              text: "Solução Sugerida:",
+              heading: HeadingLevel.HEADING_2
+            }),
+            new Paragraph({
+              text: scriptModelo.solucaoSugerida || "Não especificado"
+            }),
+            
+            new Paragraph({
+              text: "Modelo de Resposta:",
+              heading: HeadingLevel.HEADING_2
+            }),
+            new Paragraph({
+              text: scriptModelo.modeloResposta || "Não especificado"
+            }),
+            
+            new Paragraph({
+              text: "Atribuições:",
+              heading: HeadingLevel.HEADING_2
+            }),
+            new Paragraph({
+              text: scriptModelo.atribuicoes || "Não especificado"
+            }),
+            
+            new Paragraph({
+              text: "Perfil do Usuário:",
+              heading: HeadingLevel.HEADING_2
+            }),
+            new Paragraph({
+              text: scriptModelo.perfilUsuario || "Não especificado"
+            }),
+            
+            new Paragraph({
+              text: "Palavras-chave:",
+              heading: HeadingLevel.HEADING_2
+            }),
+            new Paragraph({
+              text: scriptModelo.palavrasChave || "Não especificado"
+            }),
+            
+            new Paragraph({
+              text: "Referências:",
+              heading: HeadingLevel.HEADING_2
+            }),
+            new Paragraph({
+              text: scriptModelo.referencias || "Não especificado"
+            }),
+          ],
+        }]
       });
 
       Packer.toBlob(doc).then(blob => {
