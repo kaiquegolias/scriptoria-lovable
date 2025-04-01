@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,8 +9,11 @@ import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+import { v4 as uuidv4 } from 'uuid';
+import { useNavigate } from 'react-router-dom';
 
 interface ScriptModelo {
+  id: string;
   titulo: string;
   situacao: string;
   quandoOcorre: string;
@@ -20,10 +23,13 @@ interface ScriptModelo {
   perfilUsuario: string;
   palavrasChave: string;
   referencias: string;
+  createdAt: string;
 }
 
 const GeradorScripts = () => {
+  const navigate = useNavigate();
   const [scriptModelo, setScriptModelo] = useState<ScriptModelo>({
+    id: uuidv4(),
     titulo: '[Recusa] Status 9',
     situacao: '',
     quandoOcorre: '',
@@ -32,7 +38,8 @@ const GeradorScripts = () => {
     atribuicoes: '',
     perfilUsuario: '',
     palavrasChave: '',
-    referencias: ''
+    referencias: '',
+    createdAt: new Date().toISOString()
   });
   
   const [showPreview, setShowPreview] = useState(false);
@@ -82,12 +89,12 @@ const GeradorScripts = () => {
       ];
       
       sections.forEach(section => {
-        yPos = addSection(section.title, section.content || 'Não especificado');
-        
         if (yPos > 250) {
           doc.addPage();
           yPos = 20;
         }
+        yPos = addSection(section.title, section.content || 'Não especificado');
+        yPos += 10;
       });
       
       doc.save(`script_${scriptModelo.titulo.replace(/\s+/g, '_').toLowerCase()}.pdf`);
@@ -95,6 +102,29 @@ const GeradorScripts = () => {
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
       toast.error('Erro ao gerar o PDF. Tente novamente.');
+    }
+  };
+
+  const saveScript = () => {
+    try {
+      // Get existing scripts from localStorage
+      const existingScripts = JSON.parse(localStorage.getItem('scriptModelos') || '[]');
+      
+      // Add new script with timestamp
+      const scriptToSave = {
+        ...scriptModelo,
+        id: scriptModelo.id || uuidv4(),
+        createdAt: scriptModelo.createdAt || new Date().toISOString()
+      };
+      
+      // Save to localStorage
+      localStorage.setItem('scriptModelos', JSON.stringify([...existingScripts, scriptToSave]));
+      
+      toast.success('Script salvo com sucesso!');
+      navigate('/scripts-modelos');
+    } catch (error) {
+      console.error('Erro ao salvar o script:', error);
+      toast.error('Erro ao salvar o script. Tente novamente.');
     }
   };
 
@@ -115,7 +145,7 @@ const GeradorScripts = () => {
       </p>
       
       <div className="flex flex-col lg:flex-row gap-6">
-        <div className="lg:w-1/2 space-y-6">
+        <div className={`${showPreview ? 'lg:w-1/2' : 'w-full'} space-y-6`}>
           <Card className="p-6 shadow-md">
             <h2 className="text-xl font-semibold mb-4">Informações do Script</h2>
             
@@ -130,7 +160,6 @@ const GeradorScripts = () => {
                 />
               </div>
               
-              {/* Repeat similar input fields for other sections */}
               <div>
                 <label htmlFor="situacao" className="block text-sm font-medium mb-1">Situação</label>
                 <Textarea 
@@ -142,8 +171,84 @@ const GeradorScripts = () => {
                 />
               </div>
               
-              {/* Add similar Textarea components for other sections */}
-              <div className="flex flex-wrap gap-3">
+              <div>
+                <label htmlFor="quandoOcorre" className="block text-sm font-medium mb-1">Quando Ocorre</label>
+                <Textarea 
+                  id="quandoOcorre"
+                  name="quandoOcorre"
+                  value={scriptModelo.quandoOcorre}
+                  onChange={handleChange}
+                  rows={3}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="solucaoSugerida" className="block text-sm font-medium mb-1">Solução Sugerida</label>
+                <Textarea 
+                  id="solucaoSugerida"
+                  name="solucaoSugerida"
+                  value={scriptModelo.solucaoSugerida}
+                  onChange={handleChange}
+                  rows={3}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="modeloResposta" className="block text-sm font-medium mb-1">Modelo de Resposta</label>
+                <Textarea 
+                  id="modeloResposta"
+                  name="modeloResposta"
+                  value={scriptModelo.modeloResposta}
+                  onChange={handleChange}
+                  rows={4}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="atribuicoes" className="block text-sm font-medium mb-1">Atribuições e Responsabilidades</label>
+                <Textarea 
+                  id="atribuicoes"
+                  name="atribuicoes"
+                  value={scriptModelo.atribuicoes}
+                  onChange={handleChange}
+                  rows={3}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="perfilUsuario" className="block text-sm font-medium mb-1">Perfil do Usuário</label>
+                <Textarea 
+                  id="perfilUsuario"
+                  name="perfilUsuario"
+                  value={scriptModelo.perfilUsuario}
+                  onChange={handleChange}
+                  rows={2}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="palavrasChave" className="block text-sm font-medium mb-1">Palavras-chave (separe por vírgulas)</label>
+                <Input
+                  id="palavrasChave"
+                  name="palavrasChave"
+                  value={scriptModelo.palavrasChave}
+                  onChange={handleChange}
+                  placeholder="Ex: recusa, status 9, pendente"
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="referencias" className="block text-sm font-medium mb-1">Referências</label>
+                <Textarea 
+                  id="referencias"
+                  name="referencias"
+                  value={scriptModelo.referencias}
+                  onChange={handleChange}
+                  rows={2}
+                />
+              </div>
+              
+              <div className="flex flex-wrap gap-3 pt-2">
                 <Button variant="default" onClick={togglePreview} className="flex items-center">
                   <FileText size={18} className="mr-2" />
                   {showPreview ? 'Editar' : 'Visualizar'}
@@ -152,6 +257,11 @@ const GeradorScripts = () => {
                 <Button variant="default" onClick={generatePDF} className="flex items-center">
                   <Download size={18} className="mr-2" />
                   Exportar PDF
+                </Button>
+                
+                <Button variant="outline" onClick={saveScript} className="flex items-center ml-auto">
+                  <Save size={18} className="mr-2" />
+                  Salvar Modelo
                 </Button>
               </div>
             </div>
@@ -164,7 +274,6 @@ const GeradorScripts = () => {
               <h2 className="text-xl font-bold text-center mb-4">{scriptModelo.titulo}</h2>
               
               <div className="space-y-4">
-                {/* Preview sections */}
                 {[
                   { label: 'Situação', value: scriptModelo.situacao },
                   { label: 'Quando Ocorre', value: scriptModelo.quandoOcorre },
