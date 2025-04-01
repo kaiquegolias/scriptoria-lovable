@@ -1,16 +1,16 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { FileText, Download, Save } from 'lucide-react';
+import { FileText, Download, Save, FileType } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { v4 as uuidv4 } from 'uuid';
 import { useNavigate } from 'react-router-dom';
+import { Document, Packer, Paragraph, HeadingLevel, TextRun } from 'docx';
 
 interface ScriptModelo {
   id: string;
@@ -105,19 +105,113 @@ const GeradorScripts = () => {
     }
   };
 
+  const generateWord = () => {
+    try {
+      const doc = new Document();
+      
+      doc.addSection({
+        properties: {},
+        children: [
+          new Paragraph({
+            text: scriptModelo.titulo,
+            heading: HeadingLevel.HEADING_1
+          }),
+          
+          new Paragraph({
+            text: "Situação:",
+            heading: HeadingLevel.HEADING_2
+          }),
+          new Paragraph({
+            text: scriptModelo.situacao || "Não especificado"
+          }),
+          
+          new Paragraph({
+            text: "Quando Ocorre:",
+            heading: HeadingLevel.HEADING_2
+          }),
+          new Paragraph({
+            text: scriptModelo.quandoOcorre || "Não especificado"
+          }),
+          
+          new Paragraph({
+            text: "Solução Sugerida:",
+            heading: HeadingLevel.HEADING_2
+          }),
+          new Paragraph({
+            text: scriptModelo.solucaoSugerida || "Não especificado"
+          }),
+          
+          new Paragraph({
+            text: "Modelo de Resposta:",
+            heading: HeadingLevel.HEADING_2
+          }),
+          new Paragraph({
+            text: scriptModelo.modeloResposta || "Não especificado"
+          }),
+          
+          new Paragraph({
+            text: "Atribuições:",
+            heading: HeadingLevel.HEADING_2
+          }),
+          new Paragraph({
+            text: scriptModelo.atribuicoes || "Não especificado"
+          }),
+          
+          new Paragraph({
+            text: "Perfil do Usuário:",
+            heading: HeadingLevel.HEADING_2
+          }),
+          new Paragraph({
+            text: scriptModelo.perfilUsuario || "Não especificado"
+          }),
+          
+          new Paragraph({
+            text: "Palavras-chave:",
+            heading: HeadingLevel.HEADING_2
+          }),
+          new Paragraph({
+            text: scriptModelo.palavrasChave || "Não especificado"
+          }),
+          
+          new Paragraph({
+            text: "Referências:",
+            heading: HeadingLevel.HEADING_2
+          }),
+          new Paragraph({
+            text: scriptModelo.referencias || "Não especificado"
+          }),
+        ],
+      });
+
+      Packer.toBlob(doc).then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        document.body.appendChild(a);
+        a.setAttribute('style', 'display: none');
+        a.href = url;
+        a.download = `script_${scriptModelo.titulo.replace(/\s+/g, '_').toLowerCase()}.docx`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        
+        toast.success('Word gerado com sucesso!');
+      });
+    } catch (error) {
+      console.error('Erro ao gerar Word:', error);
+      toast.error('Erro ao gerar o Word. Tente novamente.');
+    }
+  };
+
   const saveScript = () => {
     try {
-      // Get existing scripts from localStorage
       const existingScripts = JSON.parse(localStorage.getItem('scriptModelos') || '[]');
       
-      // Add new script with timestamp
       const scriptToSave = {
         ...scriptModelo,
         id: scriptModelo.id || uuidv4(),
         createdAt: scriptModelo.createdAt || new Date().toISOString()
       };
       
-      // Save to localStorage
       localStorage.setItem('scriptModelos', JSON.stringify([...existingScripts, scriptToSave]));
       
       toast.success('Script salvo com sucesso!');
@@ -257,6 +351,11 @@ const GeradorScripts = () => {
                 <Button variant="default" onClick={generatePDF} className="flex items-center">
                   <Download size={18} className="mr-2" />
                   Exportar PDF
+                </Button>
+                
+                <Button variant="secondary" onClick={generateWord} className="flex items-center">
+                  <FileType size={18} className="mr-2" />
+                  Exportar Word
                 </Button>
                 
                 <Button variant="outline" onClick={saveScript} className="flex items-center ml-auto">
