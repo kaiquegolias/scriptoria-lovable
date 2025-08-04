@@ -72,14 +72,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      const redirectUrl = `${window.location.origin}/`;
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          emailRedirectTo: redirectUrl
-        }
       });
 
       if (error) {
@@ -87,7 +83,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
 
-      toast.success('Cadastro realizado com sucesso! Verifique seu email.');
+      // Se o usuário foi criado mas precisa confirmar email
+      if (data.user && !data.session) {
+        toast.success('Cadastro realizado! Verifique seu email para confirmar a conta.');
+      } 
+      // Se o usuário foi criado e já está logado (confirmação de email desabilitada)
+      else if (data.session) {
+        toast.success('Cadastro realizado com sucesso!');
+      }
     } catch (error) {
       console.error('Erro ao fazer cadastro:', error);
       throw error;
