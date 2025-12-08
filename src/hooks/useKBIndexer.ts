@@ -48,10 +48,17 @@ export function useKBIndexer() {
     const keywords = extractKeywords(fullText);
     const contentPreview = script.content.substring(0, 200);
 
-    // Upsert the vector
+    // Delete existing entry first to avoid conflicts
+    await supabase
+      .from('kb_vectors')
+      .delete()
+      .eq('source_id', script.id)
+      .eq('source_type', 'script');
+
+    // Insert new entry
     const { error } = await supabase
       .from('kb_vectors')
-      .upsert({
+      .insert({
         source_id: script.id,
         source_type: 'script',
         title: script.title,
@@ -59,29 +66,11 @@ export function useKBIndexer() {
         tokens,
         keywords,
         updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'source_id,source_type',
-        ignoreDuplicates: false,
       });
 
     if (error) {
-      // If upsert fails due to no conflict column, try delete + insert
-      await supabase
-        .from('kb_vectors')
-        .delete()
-        .eq('source_id', script.id)
-        .eq('source_type', 'script');
-
-      await supabase
-        .from('kb_vectors')
-        .insert({
-          source_id: script.id,
-          source_type: 'script',
-          title: script.title,
-          content_preview: contentPreview,
-          tokens,
-          keywords,
-        });
+      console.error('Error indexing script:', error);
+      throw error;
     }
   }, []);
 
