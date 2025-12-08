@@ -12,6 +12,7 @@ import Profile from '@/pages/Profile';
 import NotFound from '@/pages/NotFound';
 import GeradorScripts from '@/pages/GeradorScripts';
 import ScriptsModelos from '@/pages/ScriptsModelos';
+import Supervisor from '@/pages/Supervisor';
 
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
@@ -33,6 +34,7 @@ function App() {
               <Route path="/profile" element={<Profile />} />
               <Route path="/gerador-scripts" element={<GeradorScripts />} />
               <Route path="/scripts-modelos" element={<ScriptsModelos />} />
+              <Route path="/supervisor" element={<Supervisor />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
