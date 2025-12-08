@@ -699,7 +699,7 @@ const ScriptCard = ({
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <div className="flex items-center">
           <Calendar size={12} className="mr-1" />
-          {script.created_at && format(new Date(script.created_at), "dd/MM/yy", { locale: ptBR })}
+          {script.updated_at && format(new Date(script.updated_at), "dd/MM/yy HH:mm", { locale: ptBR })}
         </div>
         <div>Usos: {script.usage_count || 0}</div>
       </div>
