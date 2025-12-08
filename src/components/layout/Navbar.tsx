@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FileText, LogOut, LogIn, Menu, X, UserCircle2, User, FileOutput } from 'lucide-react';
+import { FileText, LogOut, LogIn, Menu, X, UserCircle2, User, FileOutput, Eye } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import ThemeToggle from './ThemeToggle';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -56,6 +56,9 @@ const Navbar = () => {
               </Link>
               <Link to="/scripts-modelos" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname.includes('/script-modelo') || location.pathname.includes('/gerador-script') ? 'text-foreground' : 'text-foreground/60'}`}>
                 Gerador de Scripts
+              </Link>
+              <Link to="/supervisor" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/supervisor' ? 'text-foreground' : 'text-foreground/60'}`}>
+                Supervisor
               </Link>
             </nav>
           )}
@@ -142,6 +145,9 @@ const Navbar = () => {
               </Link>
               <Link to="/scripts-modelos" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname.includes('/script-modelo') || location.pathname.includes('/gerador-script') ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
                 Gerador de Scripts
+              </Link>
+              <Link to="/supervisor" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/supervisor' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
+                Supervisor
               </Link>
               <Link to="/profile" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/profile' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
                 Meu Perfil

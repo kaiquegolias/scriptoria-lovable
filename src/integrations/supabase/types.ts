@@ -14,6 +14,101 @@ export type Database = {
   }
   public: {
     Tables: {
+      alert_history: {
+        Row: {
+          alert_id: string
+          id: string
+          matched_logs_count: number
+          notification_error: string | null
+          notification_sent: boolean
+          sample_logs: Json | null
+          triggered_at: string
+        }
+        Insert: {
+          alert_id: string
+          id?: string
+          matched_logs_count?: number
+          notification_error?: string | null
+          notification_sent?: boolean
+          sample_logs?: Json | null
+          triggered_at?: string
+        }
+        Update: {
+          alert_id?: string
+          id?: string
+          matched_logs_count?: number
+          notification_error?: string | null
+          notification_sent?: boolean
+          sample_logs?: Json | null
+          triggered_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_history_alert_id_fkey"
+            columns: ["alert_id"]
+            isOneToOne: false
+            referencedRelation: "alerts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alerts: {
+        Row: {
+          condition_query: string
+          created_at: string
+          custom_message: string | null
+          description: string | null
+          email_recipients: string[] | null
+          id: string
+          last_triggered_at: string | null
+          name: string
+          notify_email: boolean
+          notify_internal: boolean
+          status: Database["public"]["Enums"]["alert_status"]
+          threshold: number
+          time_window_minutes: number
+          trigger_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          condition_query: string
+          created_at?: string
+          custom_message?: string | null
+          description?: string | null
+          email_recipients?: string[] | null
+          id?: string
+          last_triggered_at?: string | null
+          name: string
+          notify_email?: boolean
+          notify_internal?: boolean
+          status?: Database["public"]["Enums"]["alert_status"]
+          threshold?: number
+          time_window_minutes?: number
+          trigger_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          condition_query?: string
+          created_at?: string
+          custom_message?: string | null
+          description?: string | null
+          email_recipients?: string[] | null
+          id?: string
+          last_triggered_at?: string | null
+          name?: string
+          notify_email?: boolean
+          notify_internal?: boolean
+          status?: Database["public"]["Enums"]["alert_status"]
+          threshold?: number
+          time_window_minutes?: number
+          trigger_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       chamados: {
         Row: {
           acompanhamento: string
@@ -86,6 +181,39 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_queries: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_favorite: boolean
+          name: string
+          query: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_favorite?: boolean
+          name: string
+          query: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_favorite?: boolean
+          name?: string
+          query?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       scripts: {
         Row: {
           created_at: string
@@ -122,6 +250,54 @@ export type Database = {
         }
         Relationships: []
       }
+      system_logs: {
+        Row: {
+          entity_id: string | null
+          entity_type: string | null
+          event_type: Database["public"]["Enums"]["log_event_type"]
+          id: string
+          ip_address: string | null
+          message: string
+          origin: string
+          payload: Json | null
+          severity: Database["public"]["Enums"]["log_severity"]
+          timestamp: string
+          user_agent: string | null
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          entity_id?: string | null
+          entity_type?: string | null
+          event_type: Database["public"]["Enums"]["log_event_type"]
+          id?: string
+          ip_address?: string | null
+          message: string
+          origin?: string
+          payload?: Json | null
+          severity?: Database["public"]["Enums"]["log_severity"]
+          timestamp?: string
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          entity_id?: string | null
+          entity_type?: string | null
+          event_type?: Database["public"]["Enums"]["log_event_type"]
+          id?: string
+          ip_address?: string | null
+          message?: string
+          origin?: string
+          payload?: Json | null
+          severity?: Database["public"]["Enums"]["log_severity"]
+          timestamp?: string
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -130,7 +306,23 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      alert_status: "active" | "paused" | "triggered"
+      log_event_type:
+        | "chamado_created"
+        | "chamado_updated"
+        | "chamado_deleted"
+        | "chamado_status_changed"
+        | "script_created"
+        | "script_updated"
+        | "script_deleted"
+        | "script_executed"
+        | "user_login"
+        | "user_logout"
+        | "user_signup"
+        | "error"
+        | "system"
+        | "custom"
+      log_severity: "info" | "warning" | "error" | "critical"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -257,6 +449,25 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      alert_status: ["active", "paused", "triggered"],
+      log_event_type: [
+        "chamado_created",
+        "chamado_updated",
+        "chamado_deleted",
+        "chamado_status_changed",
+        "script_created",
+        "script_updated",
+        "script_deleted",
+        "script_executed",
+        "user_login",
+        "user_logout",
+        "user_signup",
+        "error",
+        "system",
+        "custom",
+      ],
+      log_severity: ["info", "warning", "error", "critical"],
+    },
   },
 } as const
