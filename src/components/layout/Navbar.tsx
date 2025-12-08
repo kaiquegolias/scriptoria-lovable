@@ -61,6 +61,9 @@ const Navbar = () => {
               <Link to="/supervisor" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/supervisor' ? 'text-foreground' : 'text-foreground/60'}`}>
                 Supervisor
               </Link>
+              <Link to="/biblioteca" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/biblioteca' ? 'text-foreground' : 'text-foreground/60'}`}>
+                Biblioteca
+              </Link>
             </nav>
           )}
         </div>
@@ -150,6 +153,9 @@ const Navbar = () => {
               </Link>
               <Link to="/supervisor" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/supervisor' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
                 Supervisor
+              </Link>
+              <Link to="/biblioteca" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/biblioteca' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
+                Biblioteca
               </Link>
               <Link to="/profile" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/profile' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
                 Meu Perfil
