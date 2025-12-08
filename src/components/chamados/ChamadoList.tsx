@@ -108,11 +108,10 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
     handleCloseForm();
   };
   
-  const handleDeleteChamado = async (id: string) => {
-    const deleted = await deleteChamado(id);
+  const handleDeleteChamado = async (id: string, justification?: string) => {
+    const deleted = await deleteChamado(id, justification);
     
     if (deleted) {
-      toast.success('Chamado excluído com sucesso!');
       if (selectedChamado && selectedChamado.id === id) {
         setSelectedChamado(null);
       }

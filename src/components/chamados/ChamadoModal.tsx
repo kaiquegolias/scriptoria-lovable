@@ -1,16 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Chamado } from './ChamadoCard';
 import { X, Edit, CheckCircle, RefreshCw, ExternalLink, Calendar, AlertCircle, Trash2 } from 'lucide-react';
 import { format, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 import SuggestionPanel from './SuggestionPanel';
+import DeleteTicketModal from './DeleteTicketModal';
 
 interface ChamadoModalProps {
   chamado: Chamado;
   onClose: () => void;
   onEdit?: (chamado: Chamado) => void;
-  onDelete?: (id: string) => void;
+  onDelete?: (id: string, justification: string) => Promise<void>;
   onFinish?: (id: string) => void;
   onReopen?: (id: string) => void;
 }
@@ -23,6 +24,8 @@ const ChamadoModal: React.FC<ChamadoModalProps> = ({
   onFinish,
   onReopen 
 }) => {
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onEdit) {
@@ -47,10 +50,14 @@ const ChamadoModal: React.FC<ChamadoModalProps> = ({
     }
   };
 
-  const handleDelete = (e: React.MouseEvent) => {
+  const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (onDelete && window.confirm('Tem certeza que deseja excluir este chamado?')) {
-      onDelete(chamado.id);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async (ticketId: string, justification: string) => {
+    if (onDelete) {
+      await onDelete(ticketId, justification);
       onClose();
     }
   };
@@ -203,7 +210,7 @@ const ChamadoModal: React.FC<ChamadoModalProps> = ({
             
             {onDelete && (
               <button
-                onClick={handleDelete}
+                onClick={handleDeleteClick}
                 className="px-4 py-2 rounded-md bg-red-500 text-white hover:bg-red-600 flex items-center transition-colors"
               >
                 <Trash2 size={16} className="mr-2" />
@@ -232,6 +239,16 @@ const ChamadoModal: React.FC<ChamadoModalProps> = ({
             )}
           </div>
         </motion.div>
+
+        {/* Delete confirmation modal */}
+        {showDeleteModal && (
+          <DeleteTicketModal
+            ticketId={chamado.id}
+            ticketTitle={chamado.titulo}
+            onClose={() => setShowDeleteModal(false)}
+            onConfirm={handleConfirmDelete}
+          />
+        )}
       </div>
     </AnimatePresence>
   );

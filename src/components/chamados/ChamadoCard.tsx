@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { format, addHours, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion } from 'framer-motion';
+import DeleteTicketModal from './DeleteTicketModal';
 
 export interface Chamado {
   id: string;
@@ -22,7 +23,7 @@ export interface Chamado {
 interface ChamadoCardProps {
   chamado: Chamado;
   onEdit: (chamado: Chamado) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string, justification?: string) => Promise<void> | void;
   onFinish?: (id: string) => void;
   onReopen?: (id: string) => void;
   onViewDetails?: (chamado: Chamado) => void;
@@ -36,6 +37,7 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({
   onReopen,
   onViewDetails
 }) => {
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'agendados':
@@ -130,10 +132,8 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({
           </button>
           <button
             onClick={(e) => {
-              e.stopPropagation(); // Evita que o clique propague para o card
-              if (window.confirm('Tem certeza que deseja excluir este chamado?')) {
-                onDelete(chamado.id);
-              }
+              e.stopPropagation();
+              setShowDeleteModal(true);
             }}
             className="p-1.5 rounded-full hover:bg-red-100 hover:text-red-600 transition-colors"
             aria-label="Excluir"
@@ -227,6 +227,19 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({
       <div className="text-xs text-foreground/60 mt-2">
         Atualizado em {new Date(chamado.dataAtualizacao).toLocaleDateString('pt-BR')}
       </div>
+
+      {/* Delete confirmation modal */}
+      {showDeleteModal && (
+        <DeleteTicketModal
+          ticketId={chamado.id}
+          ticketTitle={chamado.titulo}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={async (ticketId, justification) => {
+            await onDelete(ticketId, justification);
+            setShowDeleteModal(false);
+          }}
+        />
+      )}
     </motion.div>
   );
 };

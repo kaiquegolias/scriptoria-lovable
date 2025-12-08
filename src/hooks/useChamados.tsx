@@ -304,14 +304,22 @@ export function useChamados(encerrados = false) {
     return null;
   };
 
-  // Delete a chamado
-  const deleteChamado = async (id: string) => {
+  // Delete a chamado with justification and logging
+  const deleteChamado = async (id: string, justification?: string) => {
     if (!user) {
       toast.error('Você precisa estar logado para excluir chamados.');
       return false;
     }
 
     try {
+      // Get chamado data before deletion for logging
+      const { data: chamadoData } = await supabase
+        .from('chamados')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      // Delete from chamados table
       const { error } = await supabase
         .from('chamados')
         .delete()
@@ -320,6 +328,49 @@ export function useChamados(encerrados = false) {
       if (error) {
         throw error;
       }
+
+      // Remove from kb_vectors (biblioteca)
+      await supabase
+        .from('kb_vectors')
+        .delete()
+        .eq('source_id', id)
+        .eq('source_type', 'ticket');
+
+      // Log deletion in system_logs for supervisor
+      await supabase
+        .from('system_logs')
+        .insert({
+          user_id: user.id,
+          user_email: user.email,
+          event_type: 'chamado_deleted',
+          severity: 'warning',
+          message: `Chamado excluído: ${chamadoData?.titulo || id}`,
+          origin: 'chamados',
+          entity_type: 'chamado',
+          entity_id: id,
+          payload: {
+            chamado: chamadoData,
+            justification: justification || 'Não informada',
+            deleted_at: new Date().toISOString()
+          }
+        });
+
+      // Log in audit_log for detailed audit trail
+      await supabase
+        .from('audit_log')
+        .insert({
+          user_id: user.id,
+          user_email: user.email,
+          action: 'chamado_deleted',
+          entity_type: 'chamado',
+          entity_id: id,
+          old_data: chamadoData,
+          new_data: null,
+          metadata: {
+            justification: justification || 'Não informada',
+            deleted_at: new Date().toISOString()
+          }
+        });
 
       setChamados(chamados.filter(chamado => chamado.id !== id));
       return true;
