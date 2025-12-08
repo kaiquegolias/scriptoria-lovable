@@ -156,20 +156,45 @@ async function indexClosedTicket(ticketId: string, titulo: string, ultimoAcompan
   try {
     const text = `${titulo} ${ultimoAcompanhamento}`;
     const tokens = generateTokens(text);
+    const keywords = extractKeywords(text, 10);
 
+    // Delete existing entry first to avoid upsert conflicts
     await supabase
       .from('kb_vectors')
-      .upsert({
+      .delete()
+      .eq('source_id', ticketId)
+      .eq('source_type', 'ticket');
+
+    // Insert new entry
+    const { error } = await supabase
+      .from('kb_vectors')
+      .insert({
         source_type: 'ticket',
         source_id: ticketId,
         title: titulo,
         content_preview: ultimoAcompanhamento.substring(0, 200),
         tokens,
-        keywords: [],
-      }, { onConflict: 'source_id' });
+        keywords,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (error) {
+      console.error('Error inserting kb_vector:', error);
+    } else {
+      console.log('Ticket indexed successfully:', ticketId, titulo);
+    }
   } catch (error) {
     console.error('Error indexing closed ticket:', error);
   }
+}
+
+// Extract top keywords from text
+function extractKeywords(text: string, maxKeywords: number = 10): string[] {
+  const tokens = generateTokens(text);
+  return Object.entries(tokens)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, maxKeywords)
+    .map(([word]) => word);
 }
 
 function generateTokens(text: string): Record<string, number> {
