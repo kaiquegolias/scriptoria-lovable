@@ -235,21 +235,45 @@ async function indexScript(scriptId: string) {
     // Generate simple TF-IDF-like tokens
     const text = `${script.title || ''} ${script.description || ''} ${script.content || ''}`;
     const tokens = generateTokens(text);
+    const keywords = extractKeywords(text, 10);
 
-    // Upsert vector entry
+    // Delete existing entry first to avoid conflicts
     await supabase
       .from('kb_vectors')
-      .upsert({
+      .delete()
+      .eq('source_id', script.id)
+      .eq('source_type', 'script');
+
+    // Insert new entry
+    const { error } = await supabase
+      .from('kb_vectors')
+      .insert({
         source_type: 'script',
         source_id: script.id,
         title: script.title,
         content_preview: (script.content || '').substring(0, 200),
         tokens,
-        keywords: script.tags || [],
-      }, { onConflict: 'source_id' });
+        keywords: [...(script.tags || []), ...keywords],
+        updated_at: new Date().toISOString(),
+      });
+
+    if (error) {
+      console.error('Error indexing script:', error);
+    } else {
+      console.log('Script indexed successfully:', scriptId, script.title);
+    }
   } catch (error) {
     console.error('Error indexing script:', error);
   }
+}
+
+// Extract top keywords from text
+function extractKeywords(text: string, maxKeywords: number = 10): string[] {
+  const tokens = generateTokens(text);
+  return Object.entries(tokens)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, maxKeywords)
+    .map(([word]) => word);
 }
 
 function generateTokens(text: string): Record<string, number> {
