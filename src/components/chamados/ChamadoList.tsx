@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import ChamadoCard, { Chamado } from './ChamadoCard';
 import ChamadoForm from './ChamadoForm';
 import ChamadoModal from './ChamadoModal';
+import CloseTicketModal from './CloseTicketModal';
 import { toast } from 'sonner';
 import { Plus, Search, Filter } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { addBusinessDays } from 'date-fns';
 import { useChamados } from '@/hooks/useChamados';
 
 interface ChamadoListProps {
@@ -31,6 +31,7 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
   const [filtroEstruturante, setFiltroEstruturante] = useState<string>('');
   const [filtroStatus, setFiltroStatus] = useState<string>('');
   const [selectedChamado, setSelectedChamado] = useState<Chamado | null>(null);
+  const [chamadoToClose, setChamadoToClose] = useState<Chamado | null>(null);
   
   const chamadosFiltrados = chamados
     .filter(chamado => 
@@ -55,18 +56,18 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
     setIsFormOpen(true);
   };
   
-  const handleFinishChamado = async (id: string) => {
-    if (window.confirm('Deseja finalizar este chamado?')) {
-      const updated = await finishChamado(id);
-      
-      if (updated) {
-        if (onFinishChamado) {
-          onFinishChamado(updated);
-        }
-        
-        toast.success('Chamado finalizado com sucesso!');
-      }
+  const handleFinishChamado = (id: string) => {
+    const chamado = chamados.find(c => c.id === id);
+    if (chamado) {
+      setChamadoToClose(chamado);
+      setSelectedChamado(null); // Close detail modal if open
     }
+  };
+
+  const handleCloseTicketSuccess = () => {
+    // Refresh chamados list
+    setChamadoToClose(null);
+    // The hook will refetch automatically
   };
   
   const handleReopenChamado = async (id: string) => {
@@ -297,6 +298,13 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
           onReopen={encerrados ? handleReopenChamado : undefined}
         />
       )}
+
+      <CloseTicketModal
+        open={!!chamadoToClose}
+        onOpenChange={(open) => !open && setChamadoToClose(null)}
+        chamado={chamadoToClose}
+        onSuccess={handleCloseTicketSuccess}
+      />
     </div>
   );
 };
