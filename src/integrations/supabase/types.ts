@@ -109,9 +109,55 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_log: {
+        Row: {
+          action: string
+          created_at: string | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          new_data: Json | null
+          old_data: Json | null
+          user_agent: string | null
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          new_data?: Json | null
+          old_data?: Json | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          new_data?: Json | null
+          old_data?: Json | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       chamados: {
         Row: {
           acompanhamento: string
+          classificacao: string | null
           data_atualizacao: string
           data_criacao: string
           data_limite: string | null
@@ -125,6 +171,7 @@ export type Database = {
         }
         Insert: {
           acompanhamento: string
+          classificacao?: string | null
           data_atualizacao?: string
           data_criacao?: string
           data_limite?: string | null
@@ -138,6 +185,7 @@ export type Database = {
         }
         Update: {
           acompanhamento?: string
+          classificacao?: string | null
           data_atualizacao?: string
           data_criacao?: string
           data_limite?: string | null
@@ -150,6 +198,103 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      dismissed_notifications: {
+        Row: {
+          dismissed_at: string | null
+          id: string
+          ticket_id: string
+          user_id: string
+        }
+        Insert: {
+          dismissed_at?: string | null
+          id?: string
+          ticket_id: string
+          user_id: string
+        }
+        Update: {
+          dismissed_at?: string | null
+          id?: string
+          ticket_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dismissed_notifications_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "chamados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kb_vectors: {
+        Row: {
+          content_preview: string | null
+          created_at: string | null
+          id: string
+          keywords: string[] | null
+          source_id: string
+          source_type: string
+          title: string | null
+          tokens: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          content_preview?: string | null
+          created_at?: string | null
+          id?: string
+          keywords?: string[] | null
+          source_id: string
+          source_type: string
+          title?: string | null
+          tokens?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          content_preview?: string | null
+          created_at?: string | null
+          id?: string
+          keywords?: string[] | null
+          source_id?: string
+          source_type?: string
+          title?: string | null
+          tokens?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      notifications_log: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          ticket_id: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          ticket_id?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          ticket_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_log_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "chamados"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -250,6 +395,87 @@ export type Database = {
         }
         Relationships: []
       }
+      scripts_library: {
+        Row: {
+          content: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          pre_condicoes: string | null
+          scripts_relacionados: string[] | null
+          sistema: string | null
+          success_rate: number | null
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+          usage_count: number | null
+          versao: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          pre_condicoes?: string | null
+          scripts_relacionados?: string[] | null
+          sistema?: string | null
+          success_rate?: number | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+          usage_count?: number | null
+          versao?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          pre_condicoes?: string | null
+          scripts_relacionados?: string[] | null
+          sistema?: string | null
+          success_rate?: number | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+          usage_count?: number | null
+          versao?: string | null
+        }
+        Relationships: []
+      }
+      supervisor_health: {
+        Row: {
+          created_at: string | null
+          details: Json | null
+          id: string
+          last_check: string | null
+          status: string
+          subsystem: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          last_check?: string | null
+          status?: string
+          subsystem: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          last_check?: string | null
+          status?: string
+          subsystem?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       system_logs: {
         Row: {
           entity_id: string | null
@@ -297,6 +523,99 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      ticket_followups: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          ticket_id: string
+          type: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          ticket_id: string
+          type: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          ticket_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_followups_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "chamados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_suggestions: {
+        Row: {
+          applied: boolean | null
+          created_at: string | null
+          feedback: string | null
+          feedback_at: string | null
+          id: string
+          score: number
+          script_id: string | null
+          suggested_ticket_id: string | null
+          ticket_id: string
+        }
+        Insert: {
+          applied?: boolean | null
+          created_at?: string | null
+          feedback?: string | null
+          feedback_at?: string | null
+          id?: string
+          score: number
+          script_id?: string | null
+          suggested_ticket_id?: string | null
+          ticket_id: string
+        }
+        Update: {
+          applied?: boolean | null
+          created_at?: string | null
+          feedback?: string | null
+          feedback_at?: string | null
+          id?: string
+          score?: number
+          script_id?: string | null
+          suggested_ticket_id?: string | null
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_suggestions_script_id_fkey"
+            columns: ["script_id"]
+            isOneToOne: false
+            referencedRelation: "scripts_library"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_suggestions_suggested_ticket_id_fkey"
+            columns: ["suggested_ticket_id"]
+            isOneToOne: false
+            referencedRelation: "chamados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_suggestions_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "chamados"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

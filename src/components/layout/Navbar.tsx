@@ -5,6 +5,7 @@ import { FileText, LogOut, LogIn, Menu, X, UserCircle2, User, FileOutput, Eye } 
 import { useAuth } from '@/context/AuthContext';
 import ThemeToggle from './ThemeToggle';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
@@ -65,6 +66,7 @@ const Navbar = () => {
         </div>
 
         <div className="flex items-center space-x-4">
+          {user && <NotificationBell />}
           <ThemeToggle />
           
           {user ? (
