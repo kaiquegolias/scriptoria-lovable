@@ -4,6 +4,7 @@ import { X, Edit, CheckCircle, RefreshCw, ExternalLink, Calendar, AlertCircle, T
 import { format, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
+import SuggestionPanel from './SuggestionPanel';
 
 interface ChamadoModalProps {
   chamado: Chamado;
@@ -180,6 +181,13 @@ const ChamadoModal: React.FC<ChamadoModalProps> = ({
                 {format(new Date(chamado.dataAtualizacao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
               </div>
             </div>
+
+            {/* Suggestion Panel - only for non-resolved tickets */}
+            {chamado.status !== 'resolvido' && (
+              <div className="mt-6">
+                <SuggestionPanel ticketId={chamado.id} />
+              </div>
+            )}
           </div>
 
           <div className="p-4 bg-secondary/50 rounded-b-xl border-t flex justify-end gap-2">
