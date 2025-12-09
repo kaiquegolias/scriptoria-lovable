@@ -10,6 +10,7 @@ import LogsTable from '@/components/supervisor/LogsTable';
 import QueryConsole from '@/components/supervisor/QueryConsole';
 import AlertsConfig from '@/components/supervisor/AlertsConfig';
 import RealtimeIndicator from '@/components/supervisor/RealtimeIndicator';
+import SystemAlertsPanel from '@/components/supervisor/SystemAlertsPanel';
 import { LayoutDashboard, FileText, Bell, Search, History, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -104,8 +105,11 @@ const Supervisor: React.FC = () => {
           />
         </TabsContent>
 
-        <TabsContent value="alerts">
-          <AlertsConfig />
+        <TabsContent value="alerts" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <SystemAlertsPanel />
+            <AlertsConfig />
+          </div>
         </TabsContent>
 
         <TabsContent value="audit" className="space-y-6">

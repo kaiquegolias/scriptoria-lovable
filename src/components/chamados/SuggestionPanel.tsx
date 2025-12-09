@@ -141,7 +141,7 @@ const SuggestionPanel: React.FC<SuggestionPanelProps> = ({ ticketId, onApplyScri
                   size="sm"
                   variant="outline"
                   className="h-7 text-xs"
-                  onClick={() => {/* Could navigate to ticket */}}
+                  onClick={() => navigate(`/chamados?id=${suggestion.suggestedTicketId}`)}
                 >
                   <ExternalLink className="h-3 w-3 mr-1" />
                   Ver Chamado
