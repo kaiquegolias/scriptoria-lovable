@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, X, AlertTriangle, ExternalLink, Trash2, CheckCircle } from 'lucide-react';
+import { Bell, X, AlertTriangle, ExternalLink, Trash2, CheckCircle, CheckCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '@/hooks/useNotifications';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 
 const NotificationBell: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -25,6 +26,7 @@ const NotificationBell: React.FC = () => {
     alertsCount,
     loading,
     dismissNotification,
+    dismissAllNotifications,
     logNotificationClick,
     logBellClick,
   } = useNotifications();
@@ -118,6 +120,20 @@ const NotificationBell: React.FC = () => {
                 <Badge variant="outline" className="ml-auto">
                   {totalCount}
                 </Badge>
+                {totalCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={async () => {
+                      await dismissAllNotifications();
+                      toast.success('Todas as notificações foram limpas!');
+                    }}
+                  >
+                    <CheckCheck className="h-3 w-3 mr-1" />
+                    Limpar tudo
+                  </Button>
+                )}
               </div>
             </div>
 

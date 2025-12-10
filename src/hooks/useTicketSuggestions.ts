@@ -40,14 +40,22 @@ export function useTicketSuggestions() {
       const ticketText = `${ticket.titulo} ${ticket.acompanhamento}`;
       const ticketTokens = generateTokens(ticketText);
 
-      // Get all vectors
+      // Get all vectors from kb_vectors
       const { data: vectors, error: vectorsError } = await supabase
         .from('kb_vectors')
         .select('*');
 
       if (vectorsError) throw vectorsError;
 
-      // Calculate similarity scores
+      // Also get scripts directly from scripts table for more complete suggestions
+      const { data: scripts, error: scriptsError } = await supabase
+        .from('scripts')
+        .select('id, nome, situacao, modelo, estruturante, nivel')
+        .eq('user_id', user.id);
+
+      if (scriptsError) throw scriptsError;
+
+      // Calculate similarity scores from vectors
       const scoredItems: Array<{
         sourceType: string;
         sourceId: string;
@@ -60,7 +68,7 @@ export function useTicketSuggestions() {
         const vectorTokens = (vector.tokens as Record<string, number>) || {};
         const score = cosineSimilarity(ticketTokens, vectorTokens);
 
-        if (score > 0.1) { // Minimum threshold
+        if (score > 0.1) {
           scoredItems.push({
             sourceType: vector.source_type,
             sourceId: vector.source_id,
@@ -68,6 +76,37 @@ export function useTicketSuggestions() {
             contentPreview: vector.content_preview || '',
             score,
           });
+        }
+      }
+
+      // Also calculate similarity from scripts directly
+      for (const script of scripts || []) {
+        const scriptText = `${script.nome} ${script.situacao} ${script.modelo} ${script.estruturante}`;
+        const scriptTokens = generateTokens(scriptText);
+        const score = cosineSimilarity(ticketTokens, scriptTokens);
+
+        // Boost score if estruturante/nivel match
+        let boostedScore = score;
+        if (script.estruturante === ticket.estruturante) boostedScore += 0.15;
+        if (script.nivel === ticket.nivel) boostedScore += 0.1;
+
+        if (boostedScore > 0.1) {
+          // Check if script is not already in scored items
+          const existingIndex = scoredItems.findIndex(
+            item => item.sourceType === 'script' && item.sourceId === script.id
+          );
+          
+          if (existingIndex === -1) {
+            scoredItems.push({
+              sourceType: 'script',
+              sourceId: script.id,
+              title: script.nome,
+              contentPreview: `${script.situacao}\n\nModelo: ${script.modelo}`,
+              score: Math.min(boostedScore, 1),
+            });
+          } else if (boostedScore > scoredItems[existingIndex].score) {
+            scoredItems[existingIndex].score = Math.min(boostedScore, 1);
+          }
         }
       }
 
