@@ -180,6 +180,35 @@ export function useNotifications() {
     }
   }, [user]);
 
+  const dismissAllNotifications = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      // Dismiss all overdue tickets
+      const ticketIds = overdueTickets.map(t => t.id);
+      
+      for (const ticketId of ticketIds) {
+        await supabase.from('dismissed_notifications').upsert({
+          user_id: user.id,
+          ticket_id: ticketId,
+        }, { onConflict: 'user_id,ticket_id' });
+      }
+
+      // Log the bulk dismiss action
+      await supabase.from('notifications_log').insert({
+        user_id: user.id,
+        ticket_id: null,
+        action: 'dismissed_all',
+      });
+
+      // Clear system alerts from local state
+      setSystemAlerts([]);
+      setDismissedIds(new Set(ticketIds));
+    } catch (error) {
+      console.error('Error dismissing all notifications:', error);
+    }
+  }, [user, overdueTickets]);
+
   const logNotificationClick = useCallback(async (ticketId: string) => {
     if (!user) return;
 
@@ -280,6 +309,7 @@ export function useNotifications() {
     displayCount,
     loading,
     dismissNotification,
+    dismissAllNotifications,
     logNotificationClick,
     logBellClick,
     refreshNotifications: fetchAllNotifications,
