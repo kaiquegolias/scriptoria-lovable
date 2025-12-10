@@ -134,7 +134,7 @@ const NotificationBell: React.FC = () => {
                 </TabsTrigger>
               </TabsList>
 
-              <ScrollArea className="max-h-[400px]">
+              <ScrollArea className="h-[400px] overflow-y-auto">
                 <TabsContent value="all" className="m-0">
                   {loading ? (
                     <div className="p-4 text-center text-muted-foreground">

@@ -54,11 +54,21 @@ const Biblioteca = () => {
         .eq('source_type', 'ticket')
         .order('updated_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error fetching KB items:', error);
+        // Don't show toast for network errors
+        if (!error.message?.includes('Failed to fetch')) {
+          toast.error('Erro ao carregar itens da KB.');
+        }
+        return;
+      }
       setKbItems((data as KBItem[]) || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching KB items:', error);
-      toast.error('Erro ao carregar itens da KB.');
+      // Don't show toast for network errors
+      if (!error?.message?.includes('Failed to fetch')) {
+        toast.error('Erro ao carregar itens da KB.');
+      }
     } finally {
       setKbLoading(false);
     }
