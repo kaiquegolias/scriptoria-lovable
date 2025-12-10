@@ -45,7 +45,7 @@ const Biblioteca = () => {
   const [kbLoading, setKbLoading] = useState(true);
 
   // Fetch KB items from kb_vectors (only tickets)
-  const fetchKBItems = useCallback(async () => {
+  const fetchKBItems = async () => {
     try {
       setKbLoading(true);
       const { data, error } = await supabase
@@ -56,32 +56,32 @@ const Biblioteca = () => {
 
       if (error) {
         console.error('Supabase error fetching KB items:', error);
-        // Don't show toast for network errors
-        if (!error.message?.includes('Failed to fetch')) {
-          toast.error('Erro ao carregar itens da KB.');
-        }
+        setKbItems([]);
         return;
       }
       setKbItems((data as KBItem[]) || []);
     } catch (error: any) {
       console.error('Error fetching KB items:', error);
-      // Don't show toast for network errors
-      if (!error?.message?.includes('Failed to fetch')) {
-        toast.error('Erro ao carregar itens da KB.');
-      }
+      setKbItems([]);
     } finally {
       setKbLoading(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     if (!user) {
       navigate('/');
       return;
     }
-    refreshScripts();
-    fetchKBItems();
-  }, [user, navigate, refreshScripts, fetchKBItems]);
+    
+    // Initial load
+    const loadData = async () => {
+      await Promise.all([refreshScripts(), fetchKBItems()]);
+    };
+    loadData();
+    
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, navigate]);
 
   // Get all unique estruturantes/niveis from scripts as tags
   const allTags = Array.from(new Set([
