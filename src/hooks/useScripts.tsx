@@ -28,10 +28,8 @@ export function useScripts() {
 
       if (error) {
         console.error('Supabase error fetching scripts:', error);
-        // Don't show toast for network errors to avoid spam
-        if (!error.message?.includes('Failed to fetch')) {
-          toast.error('Erro ao buscar scripts.');
-        }
+        setScripts([]);
+        setLoading(false);
         return;
       }
 
@@ -46,13 +44,10 @@ export function useScripts() {
         updatedAt: item.updated_at
       }));
       setScripts(formattedScripts);
+      setLoading(false);
     } catch (error: any) {
       console.error('Error fetching scripts:', error);
-      // Don't show toast for network errors
-      if (!error?.message?.includes('Failed to fetch')) {
-        toast.error('Erro ao buscar scripts.');
-      }
-    } finally {
+      setScripts([]);
       setLoading(false);
     }
   };
