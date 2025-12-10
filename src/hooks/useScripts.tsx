@@ -23,28 +23,35 @@ export function useScripts() {
       const { data, error } = await supabase
         .from('scripts')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) {
-        throw error;
+        console.error('Supabase error fetching scripts:', error);
+        // Don't show toast for network errors to avoid spam
+        if (!error.message?.includes('Failed to fetch')) {
+          toast.error('Erro ao buscar scripts.');
+        }
+        return;
       }
 
-      if (data) {
-        const formattedScripts: Script[] = data.map(item => ({
-          id: item.id,
-          nome: item.nome,
-          estruturante: item.estruturante as 'PNCP' | 'PEN' | 'Outros',
-          nivel: item.nivel as 'N1' | 'N2' | 'N3',
-          situacao: item.situacao,
-          modelo: item.modelo,
-          createdAt: item.created_at,
-          updatedAt: item.updated_at
-        }));
-        setScripts(formattedScripts);
-      }
-    } catch (error) {
+      const formattedScripts: Script[] = (data || []).map(item => ({
+        id: item.id,
+        nome: item.nome,
+        estruturante: item.estruturante as 'PNCP' | 'PEN' | 'Outros',
+        nivel: item.nivel as 'N1' | 'N2' | 'N3',
+        situacao: item.situacao,
+        modelo: item.modelo,
+        createdAt: item.created_at,
+        updatedAt: item.updated_at
+      }));
+      setScripts(formattedScripts);
+    } catch (error: any) {
       console.error('Error fetching scripts:', error);
-      toast.error('Erro ao buscar scripts.');
+      // Don't show toast for network errors
+      if (!error?.message?.includes('Failed to fetch')) {
+        toast.error('Erro ao buscar scripts.');
+      }
     } finally {
       setLoading(false);
     }
