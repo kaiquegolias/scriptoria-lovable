@@ -2,23 +2,21 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  Search, Plus, Calendar, Edit, Trash2, Tag, 
-  RefreshCw, Database, FileCode, Copy, Check, FileText, Ticket
+  Search, Calendar, Tag, 
+  RefreshCw, Database, FileCode, Copy, Check, Ticket
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { useScriptsLibrary, ScriptLibraryItem } from '@/hooks/useScriptsLibrary';
+import { useScripts } from '@/hooks/useScripts';
 import { useKBIndexer } from '@/hooks/useKBIndexer';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Script } from '@/components/scripts/ScriptCard';
 
 interface KBItem {
   id: string;
@@ -34,39 +32,26 @@ interface KBItem {
 const Biblioteca = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { scripts, loading: scriptsLoading, refreshScripts, createScript, updateScript, deleteScript } = useScriptsLibrary();
+  const { scripts, loading: scriptsLoading, refreshScripts } = useScripts();
   const { indexAllScripts, indexAllTickets, loading: indexing, progress } = useKBIndexer();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('all');
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [selectedScript, setSelectedScript] = useState<ScriptLibraryItem | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
-  // KB Items from kb_vectors
+  // KB Items from kb_vectors (chamados encerrados)
   const [kbItems, setKbItems] = useState<KBItem[]>([]);
   const [kbLoading, setKbLoading] = useState(true);
-  
-  // Form state
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    content: '',
-    tags: '',
-    sistema: '',
-    versao: '',
-    pre_condicoes: '',
-  });
 
-  // Fetch KB items from kb_vectors
+  // Fetch KB items from kb_vectors (only tickets)
   const fetchKBItems = useCallback(async () => {
     try {
       setKbLoading(true);
       const { data, error } = await supabase
         .from('kb_vectors')
         .select('*')
+        .eq('source_type', 'ticket')
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
@@ -88,8 +73,11 @@ const Biblioteca = () => {
     fetchKBItems();
   }, [user, navigate, refreshScripts, fetchKBItems]);
 
-  // Get all unique tags from scripts
-  const allTags = Array.from(new Set(scripts.flatMap(s => s.tags || [])));
+  // Get all unique estruturantes/niveis from scripts as tags
+  const allTags = Array.from(new Set([
+    ...scripts.map(s => s.estruturante),
+    ...scripts.map(s => s.nivel)
+  ]));
 
   // Get all keywords from KB items
   const allKeywords = Array.from(new Set(kbItems.flatMap(item => item.keywords || [])));
@@ -97,11 +85,13 @@ const Biblioteca = () => {
   // Filter scripts
   const filteredScripts = scripts.filter(script => {
     const matchesSearch = 
-      script.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      script.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      script.content.toLowerCase().includes(searchTerm.toLowerCase());
+      script.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      script.situacao.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      script.modelo.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesTag = !selectedTag || (script.tags && script.tags.includes(selectedTag));
+    const matchesTag = !selectedTag || 
+      script.estruturante === selectedTag || 
+      script.nivel === selectedTag;
     
     return matchesSearch && matchesTag;
   });
@@ -117,87 +107,6 @@ const Biblioteca = () => {
     return matchesSearch && matchesKeyword;
   });
 
-  // Separate by type
-  const ticketKBItems = filteredKBItems.filter(item => item.source_type === 'ticket');
-  const scriptKBItems = filteredKBItems.filter(item => item.source_type === 'script');
-
-  const resetForm = () => {
-    setFormData({
-      title: '',
-      description: '',
-      content: '',
-      tags: '',
-      sistema: '',
-      versao: '',
-      pre_condicoes: '',
-    });
-  };
-
-  const handleCreate = async () => {
-    if (!formData.title || !formData.content) {
-      toast.error('Título e conteúdo são obrigatórios.');
-      return;
-    }
-
-    const tags = formData.tags.split(',').map(t => t.trim()).filter(Boolean);
-    
-    await createScript({
-      title: formData.title,
-      description: formData.description,
-      content: formData.content,
-      tags,
-      sistema: formData.sistema || undefined,
-      versao: formData.versao || undefined,
-      pre_condicoes: formData.pre_condicoes || undefined,
-    });
-
-    setIsCreateOpen(false);
-    resetForm();
-    fetchKBItems(); // Refresh KB items after creating
-  };
-
-  const handleEdit = async () => {
-    if (!selectedScript) return;
-    
-    const tags = formData.tags.split(',').map(t => t.trim()).filter(Boolean);
-    
-    await updateScript(selectedScript.id, {
-      title: formData.title,
-      description: formData.description,
-      content: formData.content,
-      tags,
-      sistema: formData.sistema || undefined,
-      versao: formData.versao || undefined,
-      pre_condicoes: formData.pre_condicoes || undefined,
-    });
-
-    setIsEditOpen(false);
-    setSelectedScript(null);
-    resetForm();
-    fetchKBItems(); // Refresh KB items after editing
-  };
-
-  const openEditModal = (script: ScriptLibraryItem) => {
-    setSelectedScript(script);
-    setFormData({
-      title: script.title,
-      description: script.description || '',
-      content: script.content,
-      tags: (script.tags || []).join(', '),
-      sistema: script.sistema || '',
-      versao: script.versao || '',
-      pre_condicoes: script.pre_condicoes || '',
-    });
-    setIsEditOpen(true);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Tem certeza que deseja excluir este script?')) {
-      await deleteScript(id);
-      fetchKBItems(); // Refresh KB items after deleting
-    }
-  };
-
   const copyToClipboard = async (content: string, id: string) => {
     await navigator.clipboard.writeText(content);
     setCopiedId(id);
@@ -208,14 +117,18 @@ const Biblioteca = () => {
   const handleReindex = async () => {
     await indexAllScripts();
     await indexAllTickets();
-    await fetchKBItems(); // Refresh KB items after reindexing
+    await fetchKBItems();
     toast.success('Reindexação concluída!');
+  };
+
+  const goToScript = (script: Script) => {
+    navigate(`/scripts?id=${script.id}`);
   };
 
   if (!user) return null;
 
   const loading = scriptsLoading || kbLoading;
-  const totalItems = scripts.length + ticketKBItems.length;
+  const totalItems = scripts.length + filteredKBItems.length;
   const totalKeywords = new Set([...allTags, ...allKeywords]).size;
 
   return (
@@ -239,9 +152,8 @@ const Biblioteca = () => {
             <RefreshCw size={16} className={`mr-2 ${indexing ? 'animate-spin' : ''}`} />
             {indexing ? `Indexando... ${progress.current}/${progress.total}` : 'Reindexar KB'}
           </Button>
-          <Button onClick={() => setIsCreateOpen(true)}>
-            <Plus size={16} className="mr-2" />
-            Novo Script
+          <Button onClick={() => navigate('/scripts')}>
+            Gerenciar Scripts
           </Button>
         </div>
       </div>
@@ -251,7 +163,7 @@ const Biblioteca = () => {
         <div className="relative">
           <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Pesquisar por título, descrição ou conteúdo..."
+            placeholder="Pesquisar por nome, situação ou modelo..."
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -267,9 +179,9 @@ const Biblioteca = () => {
             >
               Todos
             </Badge>
-            {[...new Set([...allTags, ...allKeywords])].slice(0, 20).map(tag => (
+            {[...new Set([...allTags, ...allKeywords])].slice(0, 20).map((tag, index) => (
               <Badge 
-                key={tag}
+                key={`${tag}-${index}`}
                 variant={selectedTag === tag ? "default" : "outline"}
                 className="cursor-pointer"
                 onClick={() => setSelectedTag(tag)}
@@ -287,12 +199,12 @@ const Biblioteca = () => {
         <Card>
           <CardContent className="pt-4">
             <div className="text-2xl font-bold">{scripts.length}</div>
-            <div className="text-sm text-muted-foreground">Scripts na Biblioteca</div>
+            <div className="text-sm text-muted-foreground">Scripts Cadastrados</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
-            <div className="text-2xl font-bold">{ticketKBItems.length}</div>
+            <div className="text-2xl font-bold">{kbItems.length}</div>
             <div className="text-sm text-muted-foreground">Chamados Indexados</div>
           </CardContent>
         </Card>
@@ -323,7 +235,7 @@ const Biblioteca = () => {
           </TabsTrigger>
           <TabsTrigger value="tickets" className="flex items-center gap-2">
             <Ticket size={14} />
-            Chamados ({ticketKBItems.length})
+            Chamados ({kbItems.length})
           </TabsTrigger>
         </TabsList>
 
@@ -340,27 +252,26 @@ const Biblioteca = () => {
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredScripts.map(script => (
-                      <ScriptCard 
+                      <ScriptKBCard 
                         key={script.id} 
                         script={script} 
                         copiedId={copiedId}
                         onCopy={copyToClipboard}
-                        onEdit={openEditModal}
-                        onDelete={handleDelete}
+                        onClick={goToScript}
                       />
                     ))}
                   </div>
                 </div>
               )}
 
-              {ticketKBItems.length > 0 && (
+              {filteredKBItems.length > 0 && (
                 <div>
                   <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                     <Ticket size={18} className="text-orange-500" />
-                    Chamados Encerrados ({ticketKBItems.length})
+                    Chamados Encerrados ({filteredKBItems.length})
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {ticketKBItems.map(item => (
+                    {filteredKBItems.map(item => (
                       <KBItemCard 
                         key={item.id} 
                         item={item}
@@ -372,11 +283,10 @@ const Biblioteca = () => {
                 </div>
               )}
 
-              {filteredScripts.length === 0 && ticketKBItems.length === 0 && (
+              {filteredScripts.length === 0 && filteredKBItems.length === 0 && (
                 <EmptyState 
                   searchTerm={searchTerm} 
                   selectedTag={selectedTag}
-                  onCreateClick={() => setIsCreateOpen(true)}
                 />
               )}
             </div>
@@ -389,13 +299,12 @@ const Biblioteca = () => {
           ) : filteredScripts.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredScripts.map(script => (
-                <ScriptCard 
+                <ScriptKBCard 
                   key={script.id} 
                   script={script} 
                   copiedId={copiedId}
                   onCopy={copyToClipboard}
-                  onEdit={openEditModal}
-                  onDelete={handleDelete}
+                  onClick={goToScript}
                 />
               ))}
             </div>
@@ -403,7 +312,6 @@ const Biblioteca = () => {
             <EmptyState 
               searchTerm={searchTerm} 
               selectedTag={selectedTag}
-              onCreateClick={() => setIsCreateOpen(true)}
               type="scripts"
             />
           )}
@@ -412,9 +320,9 @@ const Biblioteca = () => {
         <TabsContent value="tickets">
           {loading ? (
             <LoadingState />
-          ) : ticketKBItems.length > 0 ? (
+          ) : filteredKBItems.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {ticketKBItems.map(item => (
+              {filteredKBItems.map(item => (
                 <KBItemCard 
                   key={item.id} 
                   item={item}
@@ -427,315 +335,143 @@ const Biblioteca = () => {
             <EmptyState 
               searchTerm={searchTerm} 
               selectedTag={selectedTag}
-              onCreateClick={() => {}}
               type="tickets"
             />
           )}
         </TabsContent>
       </Tabs>
-
-      {/* Create Modal */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Novo Script</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="title">Título *</Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
-                placeholder="Nome do script"
-              />
-            </div>
-            <div>
-              <Label htmlFor="description">Descrição</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                placeholder="Descrição do que o script faz"
-                rows={2}
-              />
-            </div>
-            <div>
-              <Label htmlFor="content">Conteúdo *</Label>
-              <Textarea
-                id="content"
-                value={formData.content}
-                onChange={(e) => setFormData({...formData, content: e.target.value})}
-                placeholder="Conteúdo do script ou solução"
-                rows={6}
-                className="font-mono"
-              />
-            </div>
-            <div>
-              <Label htmlFor="tags">Tags (separadas por vírgula)</Label>
-              <Input
-                id="tags"
-                value={formData.tags}
-                onChange={(e) => setFormData({...formData, tags: e.target.value})}
-                placeholder="erro, sftp, conexão"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="sistema">Sistema</Label>
-                <Input
-                  id="sistema"
-                  value={formData.sistema}
-                  onChange={(e) => setFormData({...formData, sistema: e.target.value})}
-                  placeholder="Ex: PEN, PNCP"
-                />
-              </div>
-              <div>
-                <Label htmlFor="versao">Versão</Label>
-                <Input
-                  id="versao"
-                  value={formData.versao}
-                  onChange={(e) => setFormData({...formData, versao: e.target.value})}
-                  placeholder="Ex: 1.0.0"
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="pre_condicoes">Pré-condições</Label>
-              <Textarea
-                id="pre_condicoes"
-                value={formData.pre_condicoes}
-                onChange={(e) => setFormData({...formData, pre_condicoes: e.target.value})}
-                placeholder="Condições necessárias para executar o script"
-                rows={2}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {setIsCreateOpen(false); resetForm();}}>
-              Cancelar
-            </Button>
-            <Button onClick={handleCreate}>
-              Criar Script
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Modal */}
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Editar Script</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="edit-title">Título *</Label>
-              <Input
-                id="edit-title"
-                value={formData.title}
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-description">Descrição</Label>
-              <Textarea
-                id="edit-description"
-                value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                rows={2}
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-content">Conteúdo *</Label>
-              <Textarea
-                id="edit-content"
-                value={formData.content}
-                onChange={(e) => setFormData({...formData, content: e.target.value})}
-                rows={6}
-                className="font-mono"
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-tags">Tags (separadas por vírgula)</Label>
-              <Input
-                id="edit-tags"
-                value={formData.tags}
-                onChange={(e) => setFormData({...formData, tags: e.target.value})}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="edit-sistema">Sistema</Label>
-                <Input
-                  id="edit-sistema"
-                  value={formData.sistema}
-                  onChange={(e) => setFormData({...formData, sistema: e.target.value})}
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-versao">Versão</Label>
-                <Input
-                  id="edit-versao"
-                  value={formData.versao}
-                  onChange={(e) => setFormData({...formData, versao: e.target.value})}
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="edit-pre_condicoes">Pré-condições</Label>
-              <Textarea
-                id="edit-pre_condicoes"
-                value={formData.pre_condicoes}
-                onChange={(e) => setFormData({...formData, pre_condicoes: e.target.value})}
-                rows={2}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {setIsEditOpen(false); setSelectedScript(null); resetForm();}}>
-              Cancelar
-            </Button>
-            <Button onClick={handleEdit}>
-              Salvar Alterações
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
 
 // Loading State Component
 const LoadingState = () => (
-  <div className="text-center py-12">
-    <RefreshCw className="h-8 w-8 animate-spin mx-auto text-primary" />
-    <p className="mt-2 text-muted-foreground">Carregando dados...</p>
+  <div className="flex items-center justify-center py-12">
+    <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
   </div>
 );
 
 // Empty State Component
 const EmptyState = ({ 
   searchTerm, 
-  selectedTag, 
-  onCreateClick,
-  type = 'all' 
+  selectedTag,
+  type = 'all'
 }: { 
   searchTerm: string; 
-  selectedTag: string | null; 
-  onCreateClick: () => void;
+  selectedTag: string | null;
   type?: 'all' | 'scripts' | 'tickets';
 }) => (
-  <div className="text-center py-12">
-    <Database size={48} className="mx-auto text-muted-foreground/50 mb-4" />
-    <h3 className="text-xl font-medium mb-2">
-      {type === 'tickets' ? 'Nenhum chamado indexado' : 'Nenhum item encontrado'}
-    </h3>
-    <p className="text-muted-foreground">
-      {searchTerm || selectedTag
-        ? "Nenhum item corresponde aos filtros aplicados" 
-        : type === 'tickets' 
-          ? "Encerre chamados com o campo 'Último acompanhamento' para indexá-los"
-          : "Adicione scripts ou encerre chamados para popular a KB!"}
-    </p>
-    {type !== 'tickets' && (
-      <Button className="mt-4" onClick={onCreateClick}>
-        <Plus size={16} className="mr-2" />
-        Criar Primeiro Script
-      </Button>
-    )}
-  </div>
-);
-
-// Script Card Component
-const ScriptCard = ({ 
-  script, 
-  copiedId, 
-  onCopy, 
-  onEdit, 
-  onDelete 
-}: { 
-  script: ScriptLibraryItem; 
-  copiedId: string | null;
-  onCopy: (content: string, id: string) => void;
-  onEdit: (script: ScriptLibraryItem) => void;
-  onDelete: (id: string) => void;
-}) => (
-  <Card className="flex flex-col h-full">
-    <CardHeader>
-      <CardTitle className="flex items-start gap-2 text-base">
-        <FileCode size={18} className="text-primary mt-0.5 flex-shrink-0" />
-        <span className="line-clamp-2">{script.title}</span>
-      </CardTitle>
-    </CardHeader>
-    <CardContent className="flex-grow">
-      {script.description && (
-        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-          {script.description}
-        </p>
-      )}
-      
-      <div className="bg-secondary/50 rounded-md p-2 mb-3 max-h-24 overflow-hidden">
-        <pre className="text-xs font-mono line-clamp-3 whitespace-pre-wrap">
-          {script.content}
-        </pre>
-      </div>
-
-      {script.tags && script.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-3">
-          {script.tags.slice(0, 3).map((tag, index) => (
-            <Badge key={index} variant="secondary" className="text-xs">
-              {tag}
-            </Badge>
-          ))}
-          {script.tags.length > 3 && (
-            <Badge variant="secondary" className="text-xs">
-              +{script.tags.length - 3}
-            </Badge>
-          )}
-        </div>
-      )}
-
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <div className="flex items-center">
-          <Calendar size={12} className="mr-1" />
-          {script.updated_at && format(new Date(script.updated_at), "dd/MM/yy HH:mm", { locale: ptBR })}
-        </div>
-        <div>Usos: {script.usage_count || 0}</div>
-      </div>
+  <Card className="col-span-full">
+    <CardContent className="flex flex-col items-center justify-center py-12">
+      <Database className="h-12 w-12 text-muted-foreground mb-4" />
+      <h3 className="text-lg font-medium mb-2">
+        {searchTerm || selectedTag 
+          ? 'Nenhum resultado encontrado' 
+          : type === 'scripts' 
+            ? 'Nenhum script cadastrado'
+            : type === 'tickets'
+              ? 'Nenhum chamado indexado'
+              : 'Biblioteca vazia'
+        }
+      </h3>
+      <p className="text-muted-foreground text-center max-w-md">
+        {searchTerm || selectedTag 
+          ? 'Tente ajustar os filtros de busca.'
+          : type === 'scripts'
+            ? 'Acesse a página de Scripts para criar novos scripts.'
+            : type === 'tickets'
+              ? 'Encerre chamados com acompanhamento para indexá-los na KB.'
+              : 'Adicione scripts ou encerre chamados para popular a biblioteca.'
+        }
+      </p>
     </CardContent>
-    <CardFooter className="border-t pt-3 flex gap-1">
-      <Button 
-        variant="ghost" 
-        size="sm"
-        onClick={() => onCopy(script.content, script.id)}
-      >
-        {copiedId === script.id ? (
-          <Check size={14} className="mr-1 text-green-500" />
-        ) : (
-          <Copy size={14} className="mr-1" />
-        )}
-        Copiar
-      </Button>
-      <Button 
-        variant="ghost" 
-        size="sm"
-        onClick={() => onEdit(script)}
-      >
-        <Edit size={14} className="mr-1" />
-        Editar
-      </Button>
-      <Button 
-        variant="ghost" 
-        size="sm"
-        className="text-destructive hover:text-destructive"
-        onClick={() => onDelete(script.id)}
-      >
-        <Trash2 size={14} />
-      </Button>
-    </CardFooter>
   </Card>
 );
+
+// Script Card for KB (using Script type from scripts table)
+const ScriptKBCard = ({ 
+  script, 
+  copiedId, 
+  onCopy,
+  onClick
+}: { 
+  script: Script; 
+  copiedId: string | null;
+  onCopy: (content: string, id: string) => void;
+  onClick: (script: Script) => void;
+}) => {
+  const getEstruturanteBg = (estruturante: string) => {
+    switch (estruturante) {
+      case 'PNCP': return 'bg-blue-500/10 text-blue-600 border-blue-500/20';
+      case 'PEN': return 'bg-green-500/10 text-green-600 border-green-500/20';
+      default: return 'bg-gray-500/10 text-gray-600 border-gray-500/20';
+    }
+  };
+
+  const getNivelBg = (nivel: string) => {
+    switch (nivel) {
+      case 'N3': return 'bg-destructive/10 text-destructive border-destructive/20';
+      case 'N2': return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
+      case 'N1': return 'bg-blue-500/10 text-blue-600 border-blue-500/20';
+      default: return 'bg-gray-500/10 text-gray-600 border-gray-500/20';
+    }
+  };
+
+  return (
+    <Card className="flex flex-col h-full hover:shadow-md transition-shadow cursor-pointer" onClick={() => onClick(script)}>
+      <CardHeader>
+        <CardTitle className="flex items-start gap-2 text-base">
+          <FileCode size={18} className="text-primary mt-0.5 flex-shrink-0" />
+          <span className="line-clamp-2">{script.nome}</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex-grow">
+        <div className="flex flex-wrap gap-2 mb-3">
+          <Badge variant="outline" className={getEstruturanteBg(script.estruturante)}>
+            {script.estruturante}
+          </Badge>
+          <Badge variant="outline" className={getNivelBg(script.nivel)}>
+            {script.nivel}
+          </Badge>
+        </div>
+        
+        <div className="mb-3">
+          <p className="text-xs font-medium text-muted-foreground mb-1">Situação</p>
+          <p className="text-sm line-clamp-2">{script.situacao}</p>
+        </div>
+        
+        <div className="bg-secondary/50 rounded-md p-2 mb-3 max-h-24 overflow-hidden">
+          <p className="text-xs font-medium text-muted-foreground mb-1">Modelo de Resposta</p>
+          <pre className="text-xs font-mono line-clamp-3 whitespace-pre-wrap">
+            {script.modelo}
+          </pre>
+        </div>
+
+        <div className="flex items-center text-xs text-muted-foreground">
+          <Calendar size={12} className="mr-1" />
+          {format(new Date(script.updatedAt), "dd/MM/yy HH:mm", { locale: ptBR })}
+        </div>
+      </CardContent>
+      <CardFooter className="border-t pt-3 flex gap-1">
+        <Button 
+          variant="ghost" 
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onCopy(script.modelo, script.id);
+          }}
+        >
+          {copiedId === script.id ? (
+            <Check size={14} className="mr-1 text-green-500" />
+          ) : (
+            <Copy size={14} className="mr-1" />
+          )}
+          Copiar Modelo
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+};
 
 // KB Item Card Component (for tickets)
 const KBItemCard = ({ 
