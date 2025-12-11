@@ -12,7 +12,7 @@ import AlertsConfig from '@/components/supervisor/AlertsConfig';
 import RealtimeIndicator from '@/components/supervisor/RealtimeIndicator';
 import SystemAlertsPanel from '@/components/supervisor/SystemAlertsPanel';
 import AIInsightsPanel from '@/components/supervisor/AIInsightsPanel';
-import WikiPENImporter from '@/components/supervisor/WikiPENImporter';
+import AISearchPanel from '@/components/supervisor/AISearchPanel';
 import { LayoutDashboard, FileText, Bell, Search, History, RefreshCw, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -88,11 +88,9 @@ const Supervisor: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="ai-insights" className="space-y-6">
+          <AISearchPanel />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <AIInsightsPanel metrics={metrics} analysisType="dashboard" />
-            <div className="space-y-6">
-              <WikiPENImporter />
-            </div>
           </div>
         </TabsContent>
 
