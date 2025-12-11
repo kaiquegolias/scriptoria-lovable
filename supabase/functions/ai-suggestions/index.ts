@@ -68,6 +68,13 @@ serve(async (req) => {
       .in("ticket_id", closedTicketIds.length > 0 ? closedTicketIds : ["00000000-0000-0000-0000-000000000000"])
       .eq("type", "ultimo_acompanhamento");
 
+    // Fetch WikiPEN knowledge base documents
+    const { data: kbDocs } = await supabase
+      .from("kb_documents")
+      .select("title, content, category, keywords")
+      .eq("source", "wiki_pen")
+      .limit(100);
+
     // Build context for AI
     const scriptsContext = (scripts || []).map(s => 
       `Script: ${s.nome}\nSituação: ${s.situacao}\nModelo de resposta: ${s.modelo}\nEstruturante: ${s.estruturante}\nNível: ${s.nivel}`
@@ -82,18 +89,27 @@ serve(async (req) => {
       return `Chamado Resolvido: ${t.titulo}\nClassificação: ${t.classificacao || 'N/A'}\nEstruturante: ${t.estruturante}\nNível: ${t.nivel}\nAcompanhamento: ${t.acompanhamento}\nSolução aplicada: ${followup?.content || 'N/A'}`;
     }).join("\n\n---\n\n");
 
+    // WikiPEN knowledge base context
+    const wikiPenContext = (kbDocs || []).map(doc =>
+      `DOCUMENTO WIKIPEN: ${doc.title}\nCategoria: ${doc.category || 'Geral'}\nPalavras-chave: ${(doc.keywords || []).join(", ")}\nConteúdo: ${doc.content}`
+    ).join("\n\n===\n\n");
+
     const systemPrompt = `Você é um assistente especializado em suporte técnico para sistemas governamentais brasileiros (PEN e PNCP).
 
+BASE DE CONHECIMENTO WIKIPEN (DOCUMENTAÇÃO OFICIAL):
+${wikiPenContext || "Documentação não disponível"}
+
 Sua tarefa é analisar um chamado de suporte e fornecer:
-1. Uma explicação técnica clara do problema
+1. Uma explicação técnica clara do problema baseada na documentação oficial
 2. Três respostas formais sugeridas que podem ser enviadas ao usuário
 
-REGRAS:
+REGRAS IMPORTANTES:
 - Use linguagem formal e profissional
 - As respostas devem ser em português brasileiro
 - Considere o contexto do estruturante (${ticket.estruturante}) e nível (${ticket.nivel})
-- Priorize scripts e soluções que já funcionaram para casos similares
+- PRIORIZE informações da WikiPEN para fundamentar suas respostas
 - Se houver chamados similares resolvidos, utilize as soluções que funcionaram
+- Cite referências da documentação quando aplicável
 
 SCRIPTS DISPONÍVEIS DO USUÁRIO:
 ${scriptsContext || "Nenhum script disponível"}

@@ -2,3 +2,9 @@ project_id = "iydttpxppmjdtcrohlfj"
 
 [functions.ai-suggestions]
 verify_jwt = false
+
+[functions.supervisor-ai-analysis]
+verify_jwt = false
+
+[functions.import-kb-content]
+verify_jwt = false

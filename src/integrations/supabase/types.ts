@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_analysis_cache: {
+        Row: {
+          analysis_result: Json
+          analysis_type: string
+          created_at: string
+          expires_at: string
+          id: string
+          metrics_snapshot: Json
+        }
+        Insert: {
+          analysis_result: Json
+          analysis_type: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          metrics_snapshot: Json
+        }
+        Update: {
+          analysis_result?: Json
+          analysis_type?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          metrics_snapshot?: Json
+        }
+        Relationships: []
+      }
       alert_history: {
         Row: {
           alert_id: string
@@ -248,6 +275,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      kb_documents: {
+        Row: {
+          category: string | null
+          content: string
+          created_at: string
+          id: string
+          keywords: string[] | null
+          source: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          keywords?: string[] | null
+          source?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          keywords?: string[] | null
+          source?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       kb_vectors: {
         Row: {
