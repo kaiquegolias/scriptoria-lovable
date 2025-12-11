@@ -1,11 +1,11 @@
-
-import React, { useState } from 'react';
-import { Edit, ExternalLink, CheckCircle, AlertCircle, Calendar, RefreshCw, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Edit, ExternalLink, CheckCircle, AlertCircle, Calendar, RefreshCw, Trash2, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, addHours, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import DeleteTicketModal from './DeleteTicketModal';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface Chamado {
   id: string;
@@ -17,7 +17,7 @@ export interface Chamado {
   links: string[];
   dataCriacao: string;
   dataAtualizacao: string;
-  dataLimite?: string; // Data limite para chamados aguardando devolutiva
+  dataLimite?: string;
 }
 
 interface ChamadoCardProps {
@@ -29,6 +29,12 @@ interface ChamadoCardProps {
   onViewDetails?: (chamado: Chamado) => void;
 }
 
+interface LastObservation {
+  content: string;
+  createdAt: string;
+  userName: string;
+}
+
 const ChamadoCard: React.FC<ChamadoCardProps> = ({ 
   chamado, 
   onEdit, 
@@ -38,6 +44,50 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({
   onViewDetails
 }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [lastObservation, setLastObservation] = useState<LastObservation | null>(null);
+
+  // Fetch last observation for this ticket
+  useEffect(() => {
+    const fetchLastObservation = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('ticket_followups')
+          .select('content, created_at, created_by')
+          .eq('ticket_id', chamado.id)
+          .eq('type', 'observation')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (error || !data) return;
+
+        // Get user name
+        let userName = 'Usuário';
+        if (data.created_by) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('nome')
+            .eq('user_id', data.created_by)
+            .maybeSingle();
+          
+          if (profile?.nome) {
+            userName = profile.nome;
+          }
+        }
+
+        setLastObservation({
+          content: data.content || '',
+          createdAt: data.created_at,
+          userName
+        });
+      } catch (err) {
+        console.error('Error fetching last observation:', err);
+      }
+    };
+
+    fetchLastObservation();
+  }, [chamado.id, chamado.dataAtualizacao]);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'agendados':
@@ -45,7 +95,6 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({
       case 'agendados_planner':
         return 'bg-purple-500';
       case 'agendados_aguardando':
-        // Verificar se está atrasado (mais de 72 horas)
         if (chamado.dataLimite && isAfter(new Date(), new Date(chamado.dataLimite))) {
           return 'bg-red-600';
         }
@@ -100,12 +149,10 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({
     }
   };
 
-  // Verificar se o cartão está atrasado (para chamados aguardando devolutiva)
   const isCardDelayed = chamado.status === 'agendados_aguardando' && 
                         chamado.dataLimite && 
                         isAfter(new Date(), new Date(chamado.dataLimite));
 
-  // Classe condicional para cartões atrasados
   const cardClass = `glass p-6 rounded-xl shadow-sm hover-lift cursor-pointer ${isCardDelayed ? 'status-delayed' : ''}`;
 
   return (
@@ -122,7 +169,7 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({
         <div className="flex space-x-1">
           <button
             onClick={(e) => {
-              e.stopPropagation(); // Evita que o clique propague para o card
+              e.stopPropagation();
               onEdit(chamado);
             }}
             className="p-1.5 rounded-full hover:bg-gray-200 transition-colors"
@@ -143,7 +190,7 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({
           {onFinish && chamado.status !== 'resolvido' && (
             <button
               onClick={(e) => {
-                e.stopPropagation(); // Evita que o clique propague para o card
+                e.stopPropagation();
                 onFinish(chamado.id);
               }}
               className="p-1.5 rounded-full hover:bg-green-100 hover:text-green-600 transition-colors"
@@ -155,7 +202,7 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({
           {onReopen && chamado.status === 'resolvido' && (
             <button
               onClick={(e) => {
-                e.stopPropagation(); // Evita que o clique propague para o card
+                e.stopPropagation();
                 onReopen(chamado.id);
               }}
               className="p-1.5 rounded-full hover:bg-blue-100 hover:text-blue-600 transition-colors"
@@ -185,6 +232,22 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({
         </h4>
         <p className="text-sm text-foreground/80 line-clamp-2 bg-white/50 p-2 rounded">{chamado.acompanhamento}</p>
       </div>
+
+      {/* Última Observação */}
+      {lastObservation && (
+        <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="flex items-center gap-2 mb-1">
+            <MessageCircle size={14} className="text-blue-600" />
+            <h4 className="text-xs font-medium uppercase text-blue-700">
+              Última Observação
+            </h4>
+          </div>
+          <p className="text-sm text-foreground/80 line-clamp-2">{lastObservation.content}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {lastObservation.userName} • {format(new Date(lastObservation.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+          </p>
+        </div>
+      )}
       
       {chamado.links.length > 0 && (
         <div className="mb-4">
@@ -199,7 +262,7 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                onClick={(e) => e.stopPropagation()} // Evita que o clique propague para o card
+                onClick={(e) => e.stopPropagation()}
               >
                 <ExternalLink size={10} className="mr-1" />
                 Link {index + 1}
@@ -209,7 +272,6 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({
         </div>
       )}
       
-      {/* Data limite para chamados que aguardam devolutiva */}
       {chamado.status === 'agendados_aguardando' && chamado.dataLimite && (
         <div className={`mb-4 p-2 rounded-md flex items-center ${isCardDelayed ? 'bg-red-100' : 'bg-yellow-100'}`}>
           <Calendar size={14} className={isCardDelayed ? 'text-red-600 mr-2' : 'text-yellow-600 mr-2'} />
@@ -228,7 +290,6 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({
         Atualizado em {new Date(chamado.dataAtualizacao).toLocaleDateString('pt-BR')}
       </div>
 
-      {/* Delete confirmation modal */}
       {showDeleteModal && (
         <DeleteTicketModal
           ticketId={chamado.id}

@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,6 +13,7 @@ interface SearchRequest {
   documentTitle?: string;
   urls?: string[];
   urlContents?: Array<{ url: string; content: string }>;
+  userId?: string;
 }
 
 serve(async (req) => {
@@ -25,7 +27,11 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY não configurada');
     }
 
-    const { query, documentContent, documentTitle, urls, urlContents }: SearchRequest = await req.json();
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { query, documentContent, documentTitle, urls, urlContents, userId }: SearchRequest = await req.json();
 
     if (!query) {
       return new Response(
@@ -34,70 +40,139 @@ serve(async (req) => {
       );
     }
 
-    // Build context from document or URLs
-    let contextContent = '';
+    // Fetch internal sources for priority search
+    let scriptsContext = '';
+    let modelosContext = '';
+    let kbContext = '';
+
+    if (userId) {
+      // Fetch user's scripts (Modelos de Resposta para Chamados - HIGHEST PRIORITY)
+      const { data: scripts } = await supabase
+        .from("scripts")
+        .select("id, nome, situacao, modelo, estruturante, nivel")
+        .eq("user_id", userId);
+
+      modelosContext = (scripts || []).map(s => 
+        `[MODELO] Script: ${s.nome}\nSituação: ${s.situacao}\nModelo de resposta: ${s.modelo}\nEstruturante: ${s.estruturante}\nNível: ${s.nivel}`
+      ).join("\n\n---\n\n");
+
+      // Fetch scripts from library (SECOND PRIORITY)
+      const { data: libraryScripts } = await supabase
+        .from("scripts_library")
+        .select("id, title, description, content, tags");
+
+      scriptsContext = (libraryScripts || []).map(s =>
+        `[SCRIPT_BIBLIOTECA] Título: ${s.title}\nDescrição: ${s.description || 'N/A'}\nConteúdo: ${s.content}\nTags: ${(s.tags || []).join(", ")}`
+      ).join("\n\n---\n\n");
+    }
+
+    // Fetch KB documents (LOWEST PRIORITY - only when missing in models/scripts)
+    const { data: kbDocs } = await supabase
+      .from("kb_documents")
+      .select("title, content, category, keywords")
+      .limit(50);
+
+    kbContext = (kbDocs || []).map(doc =>
+      `[KB] ${doc.title}\nCategoria: ${doc.category || 'Geral'}\nPalavras-chave: ${(doc.keywords || []).join(", ")}\nConteúdo: ${doc.content}`
+    ).join("\n\n===\n\n");
+
+    // Build context from document or URLs (PDF - THIRD PRIORITY after models/scripts)
+    let documentContext = '';
     let sourceInfo = '';
 
     if (documentContent) {
-      contextContent = documentContent;
+      documentContext = `[PDF/DOCUMENTO ANEXADO]\n${documentContent}`;
       sourceInfo = `Documento: ${documentTitle || 'Arquivo anexado'}`;
     } else if (urlContents && urlContents.length > 0) {
-      contextContent = urlContents.map(u => `=== CONTEÚDO DE: ${u.url} ===\n${u.content}`).join('\n\n');
+      documentContext = urlContents.map(u => `[URL] ${u.url}\n${u.content}`).join('\n\n');
       sourceInfo = `URLs analisadas: ${urlContents.map(u => u.url).join(', ')}`;
-    }
-
-    if (!contextContent) {
-      return new Response(
-        JSON.stringify({ error: 'Nenhum conteúdo fornecido para análise' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
     }
 
     // Truncate content if too large
     const maxContentLength = 80000;
-    if (contextContent.length > maxContentLength) {
-      contextContent = contextContent.substring(0, maxContentLength) + '\n\n[... conteúdo truncado por limite de tamanho ...]';
+    let fullContext = `
+PRIORIDADE 1 - MODELOS DE RESPOSTA PARA CHAMADOS (Scripts do usuário):
+${modelosContext || "Nenhum modelo de resposta disponível"}
+
+PRIORIDADE 2 - SCRIPTS DA BIBLIOTECA:
+${scriptsContext || "Nenhum script na biblioteca"}
+
+PRIORIDADE 3 - DOCUMENTO/PDF ANEXADO:
+${documentContext || "Nenhum documento anexado"}
+
+PRIORIDADE 4 - BIBLIOTECA KB (usar apenas se não encontrar nas fontes acima):
+${kbContext || "KB vazia"}
+`;
+
+    if (fullContext.length > maxContentLength) {
+      fullContext = fullContext.substring(0, maxContentLength) + '\n\n[... conteúdo truncado por limite de tamanho ...]';
     }
 
     const systemPrompt = `Você é um assistente especializado em análise de documentação técnica do Processo Eletrônico Nacional (PEN) e sistemas governamentais brasileiros.
 
-REGRAS IMPORTANTES:
-1. Você DEVE responder EXCLUSIVAMENTE com base no conteúdo fornecido
-2. NÃO invente informações que não estejam no documento
-3. Se a informação não existir no documento, diga claramente
-4. Sempre cite as partes relevantes do documento que fundamentam sua resposta
-5. As respostas formais devem ser profissionais e adequadas para comunicação oficial
+REGRAS CRÍTICAS DE COMPORTAMENTO:
 
-FORMATO DE RESPOSTA OBRIGATÓRIO:
-Você deve retornar um JSON válido com a seguinte estrutura:
+1. NUNCA INVENTE INFORMAÇÃO
+   - Se não encontrar conteúdo relevante nas fontes internas, diga EXPLICITAMENTE:
+   "Não encontrei conteúdo relevante nas suas fontes internas para responder com precisão."
+
+2. ORDEM DE PRIORIDADE DE BUSCA (OBRIGATÓRIO):
+   1º) Modelos de Resposta para Chamados (Scripts do usuário) - FONTE PRINCIPAL
+   2º) Scripts da Biblioteca
+   3º) PDF/Documento anexado - apoio secundário
+   4º) Biblioteca KB - consultar apenas quando faltar nas fontes anteriores
+
+3. NUNCA REESCREVA por conta própria - sua função é LOCALIZAR, EXTRAIR e MONTAR respostas
+
+4. SEMPRE informe a confiança estimada em PERCENTUAL baseada em:
+   - Quantidade de evidências encontradas
+   - Correspondência textual com termos pesquisados
+   - Similaridade com Modelos de Resposta
+   - Presença de termos-chave nos scripts
+
+FORMATO DE RESPOSTA OBRIGATÓRIO (JSON):
 {
-  "sugestaoResposta1": "Texto da primeira sugestão de resposta formal",
-  "sugestaoResposta2": "Texto da segunda sugestão de resposta formal",
-  "fundamentacaoTecnica": "Explicação detalhada do porquê dessas respostas, citando trechos do documento",
-  "trechosRelevantes": ["trecho 1 do documento", "trecho 2 do documento"],
-  "confianca": "alta|media|baixa",
-  "observacoes": "Qualquer observação adicional relevante"
+  "analiseInterna": {
+    "fontesEncontradas": ["Modelos", "Scripts", "PDF", "KB"],
+    "trechosRelevantes": ["trecho 1 encontrado", "trecho 2 encontrado"]
+  },
+  "explicacaoTecnica": "Explicação construída a partir das fontes internas",
+  "respostasFormais": [
+    "Modelo 1 - extraído prioritariamente dos Modelos de Resposta",
+    "Modelo 2 - baseado nos scripts/documentação",
+    "Modelo 3 - alternativa formal"
+  ],
+  "confiancaEstimada": 75,
+  "observacoes": "Informações adicionais relevantes"
 }`;
 
-    const userPrompt = `FONTE DA INFORMAÇÃO:
-${sourceInfo}
-
-CONTEÚDO DO DOCUMENTO:
-${contextContent}
+    const userPrompt = `CONTEXTO DAS FONTES INTERNAS:
+${fullContext}
 
 PROBLEMA DO USUÁRIO:
 ${query}
 
-Analise profundamente o documento acima e forneça:
-1. Duas sugestões de resposta formal que posso enviar ao usuário
-2. Uma fundamentação técnica baseada exclusivamente no documento
-3. Os trechos relevantes que fundamentam a resposta
+INSTRUÇÕES:
+1. Busque PRIMEIRO nos Modelos de Resposta para Chamados
+2. Depois vasculhe a aba Scripts
+3. Analise o PDF apenas como apoio secundário
+4. Consulte KB somente quando faltar informação
 
-Retorne APENAS o JSON no formato especificado, sem markdown ou texto adicional.`;
+Gere:
+- Análise interna (fontes encontradas e trechos)
+- Explicação técnica baseada nas fontes
+- 3 RESPOSTAS FORMAIS (extraídas dos modelos quando possível, NÃO inventadas)
+- Confiança estimada em PERCENTUAL (0-100)
+
+Se não encontrar nada relevante, AVISE EXPLICITAMENTE.
+
+Retorne APENAS o JSON no formato especificado, sem markdown.`;
 
     console.log('Sending request to Lovable AI Gateway...');
     console.log('Query:', query);
-    console.log('Content length:', contextContent.length);
+    console.log('Has models:', !!modelosContext);
+    console.log('Has scripts:', !!scriptsContext);
+    console.log('Has document:', !!documentContext);
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -145,18 +220,18 @@ Retorne APENAS o JSON no formato especificado, sem markdown ou texto adicional.`
     // Parse JSON response
     let parsedResult;
     try {
-      // Remove markdown code blocks if present
       const cleanJson = textContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       parsedResult = JSON.parse(cleanJson);
     } catch (parseError) {
       console.error('Failed to parse AI response as JSON:', textContent);
-      // Fallback: create structured response from text
       parsedResult = {
-        sugestaoResposta1: textContent.substring(0, 1000),
-        sugestaoResposta2: 'Não foi possível gerar segunda sugestão estruturada',
-        fundamentacaoTecnica: 'Resposta baseada no documento fornecido. A IA não retornou formato estruturado.',
-        trechosRelevantes: [],
-        confianca: 'media',
+        analiseInterna: {
+          fontesEncontradas: [],
+          trechosRelevantes: []
+        },
+        explicacaoTecnica: textContent.substring(0, 1000),
+        respostasFormais: ['Não foi possível gerar resposta estruturada'],
+        confiancaEstimada: 20,
         observacoes: 'Resposta processada em formato alternativo'
       };
     }

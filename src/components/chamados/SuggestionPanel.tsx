@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Lightbulb, FileCode, Ticket, ThumbsUp, ThumbsDown, ExternalLink, RefreshCw, Sparkles, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Lightbulb, FileCode, Ticket, ThumbsUp, ThumbsDown, ExternalLink, RefreshCw, Sparkles, Copy, Check, ChevronDown, ChevronUp, FileText, Search, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,6 +21,7 @@ const SuggestionPanel: React.FC<SuggestionPanelProps> = ({ ticketId, onApplyScri
   const [feedbackGiven, setFeedbackGiven] = useState<Set<string>>(new Set());
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [expandedAI, setExpandedAI] = useState(false);
+  const [showAnalysis, setShowAnalysis] = useState(false);
 
   useEffect(() => {
     if (ticketId) {
@@ -67,6 +68,12 @@ const SuggestionPanel: React.FC<SuggestionPanelProps> = ({ ticketId, onApplyScri
       case 'média': return 'bg-yellow-500 text-white';
       default: return 'bg-orange-500 text-white';
     }
+  };
+
+  const getConfidenceColor = (value: number) => {
+    if (value >= 70) return 'bg-green-500/20 text-green-700 border-green-500/30';
+    if (value >= 40) return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30';
+    return 'bg-red-500/20 text-red-700 border-red-500/30';
   };
 
   return (
@@ -240,11 +247,73 @@ const SuggestionPanel: React.FC<SuggestionPanelProps> = ({ ticketId, onApplyScri
 
             {aiSuggestion && !aiLoading && (
               <div className="space-y-4">
+                {/* Confiança Estimada */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Resultado da Análise</span>
+                  <Badge className={getConfidenceColor(aiSuggestion.confiancaEstimada || 50)}>
+                    📊 Confiança: {aiSuggestion.confiancaEstimada || 50}%
+                  </Badge>
+                </div>
+
+                {/* Análise Interna - Collapsible */}
+                {aiSuggestion.analiseInterna && (
+                  <div className="border rounded-lg overflow-hidden">
+                    <button
+                      onClick={() => setShowAnalysis(!showAnalysis)}
+                      className="w-full p-3 bg-blue-50 dark:bg-blue-950/30 flex items-center justify-between text-left"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Search className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                          🔍 Análise Interna
+                        </span>
+                      </div>
+                      {showAnalysis ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </button>
+                    
+                    {showAnalysis && (
+                      <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 space-y-3">
+                        {aiSuggestion.analiseInterna.fontesEncontradas?.length > 0 ? (
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground mb-2">Fontes encontradas:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {aiSuggestion.analiseInterna.fontesEncontradas.map((fonte, i) => (
+                                <Badge key={i} variant="outline" className="text-xs">
+                                  <FileText className="h-3 w-3 mr-1" />
+                                  {fonte}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-2 rounded">
+                            <AlertCircle className="h-4 w-4" />
+                            <p className="text-xs">
+                              Não encontrei conteúdo relevante nas fontes internas.
+                            </p>
+                          </div>
+                        )}
+
+                        {aiSuggestion.analiseInterna.trechosRelevantes?.length > 0 && (
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground mb-2">Trechos relevantes:</p>
+                            {aiSuggestion.analiseInterna.trechosRelevantes.map((trecho, i) => (
+                              <div key={i} className="text-xs p-2 bg-white dark:bg-background rounded border-l-2 border-blue-500 mb-1 italic">
+                                "{trecho}"
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Explicação Técnica */}
-                <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-semibold text-blue-700 dark:text-blue-300">
-                      Explicação Técnica
+                    <h4 className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+                      🛠️ Explicação Técnica
                     </h4>
                     <Button
                       size="sm"
@@ -255,16 +324,16 @@ const SuggestionPanel: React.FC<SuggestionPanelProps> = ({ ticketId, onApplyScri
                       {expandedAI ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </Button>
                   </div>
-                  <p className={`text-sm text-blue-900 dark:text-blue-100 whitespace-pre-wrap ${!expandedAI ? 'line-clamp-3' : ''}`}>
+                  <p className={`text-sm text-amber-900 dark:text-amber-100 whitespace-pre-wrap ${!expandedAI ? 'line-clamp-3' : ''}`}>
                     {aiSuggestion.explicacaoTecnica}
                   </p>
                 </div>
 
-                {/* Respostas Formais */}
+                {/* 3 Respostas Formais */}
                 {aiSuggestion.respostasFormais?.length > 0 && (
                   <div className="space-y-2">
                     <h4 className="text-sm font-semibold text-foreground">
-                      Respostas Formais Sugeridas
+                      📨 3 Respostas Formais Sugeridas
                     </h4>
                     {aiSuggestion.respostasFormais.map((resposta, index) => (
                       <div
@@ -272,8 +341,8 @@ const SuggestionPanel: React.FC<SuggestionPanelProps> = ({ ticketId, onApplyScri
                         className="p-3 rounded-lg bg-secondary/50 border border-border/50"
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <Badge variant="outline" className="mb-2">
-                            Opção {index + 1}
+                          <Badge variant="outline" className="mb-2 bg-primary/10">
+                            🟦 Modelo {index + 1}
                           </Badge>
                           <Button
                             size="sm"

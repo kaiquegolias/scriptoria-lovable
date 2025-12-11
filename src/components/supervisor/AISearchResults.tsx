@@ -3,15 +3,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Copy, MessageSquare, BookOpen, CheckCircle, AlertTriangle, HelpCircle } from 'lucide-react';
+import { Copy, MessageSquare, BookOpen, Search, FileText, AlertCircle } from 'lucide-react';
+
+interface AnaliseInterna {
+  fontesEncontradas: string[];
+  trechosRelevantes: string[];
+}
 
 interface SearchResult {
-  sugestaoResposta1: string;
-  sugestaoResposta2: string;
-  fundamentacaoTecnica: string;
-  trechosRelevantes: string[];
-  confianca: string;
+  analiseInterna?: AnaliseInterna;
+  explicacaoTecnica: string;
+  respostasFormais: string[];
+  confiancaEstimada: number;
   observacoes?: string;
+  // Legacy fields for backwards compatibility
+  sugestaoResposta1?: string;
+  sugestaoResposta2?: string;
+  fundamentacaoTecnica?: string;
+  trechosRelevantes?: string[];
+  confianca?: string;
 }
 
 interface AISearchResultsProps {
@@ -25,37 +35,40 @@ const AISearchResults: React.FC<AISearchResultsProps> = ({ result, sourceInfo })
     toast.success(`${label} copiada!`);
   };
 
-  const getConfidenceBadge = (confianca: string) => {
-    switch (confianca?.toLowerCase()) {
-      case 'alta':
-        return (
-          <Badge className="bg-green-500/20 text-green-700 border-green-500/30">
-            <CheckCircle className="h-3 w-3 mr-1" />
-            Confiança Alta
-          </Badge>
-        );
-      case 'media':
-        return (
-          <Badge className="bg-yellow-500/20 text-yellow-700 border-yellow-500/30">
-            <AlertTriangle className="h-3 w-3 mr-1" />
-            Confiança Média
-          </Badge>
-        );
-      default:
-        return (
-          <Badge className="bg-orange-500/20 text-orange-700 border-orange-500/30">
-            <HelpCircle className="h-3 w-3 mr-1" />
-            Confiança Baixa
-          </Badge>
-        );
-    }
+  // Handle both new and legacy format
+  const respostasFormais = result.respostasFormais || [
+    result.sugestaoResposta1,
+    result.sugestaoResposta2
+  ].filter(Boolean) as string[];
+
+  const explicacao = result.explicacaoTecnica || result.fundamentacaoTecnica || '';
+  const confianca = result.confiancaEstimada ?? (
+    result.confianca === 'alta' ? 85 :
+    result.confianca === 'media' ? 55 : 25
+  );
+
+  const trechos = result.analiseInterna?.trechosRelevantes || result.trechosRelevantes || [];
+  const fontes = result.analiseInterna?.fontesEncontradas || [];
+
+  const getConfidenceColor = (value: number) => {
+    if (value >= 70) return 'bg-green-500/20 text-green-700 border-green-500/30';
+    if (value >= 40) return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30';
+    return 'bg-red-500/20 text-red-700 border-red-500/30';
+  };
+
+  const getConfidenceLabel = (value: number) => {
+    if (value >= 70) return 'Alta';
+    if (value >= 40) return 'Média';
+    return 'Baixa';
   };
 
   return (
     <div className="space-y-4 mt-6">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Resultado da Análise</h3>
-        {getConfidenceBadge(result.confianca)}
+        <Badge className={getConfidenceColor(confianca)}>
+          📊 Confiança estimada: {confianca}% ({getConfidenceLabel(confianca)})
+        </Badge>
       </div>
 
       {sourceInfo && (
@@ -64,75 +77,50 @@ const AISearchResults: React.FC<AISearchResultsProps> = ({ result, sourceInfo })
         </p>
       )}
 
-      {/* Suggestion 1 */}
-      <Card className="border-primary/30 bg-primary/5">
+      {/* Análise Interna */}
+      <Card className="border-blue-500/30 bg-blue-500/5">
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-primary" />
-            🟦 Sugestão de Resposta 1 (formal)
+            <Search className="h-4 w-4 text-blue-600" />
+            🔍 ANÁLISE INTERNA
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm whitespace-pre-wrap leading-relaxed">
-            {result.sugestaoResposta1}
-          </p>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => copyToClipboard(result.sugestaoResposta1, 'Resposta 1')}
-          >
-            <Copy className="h-3 w-3 mr-1" />
-            Copiar
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Suggestion 2 */}
-      <Card className="border-primary/30 bg-primary/5">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-primary" />
-            🟦 Sugestão de Resposta 2 (formal)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm whitespace-pre-wrap leading-relaxed">
-            {result.sugestaoResposta2}
-          </p>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => copyToClipboard(result.sugestaoResposta2, 'Resposta 2')}
-          >
-            <Copy className="h-3 w-3 mr-1" />
-            Copiar
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Technical Foundation */}
-      <Card className="border-yellow-500/30 bg-yellow-500/5">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <BookOpen className="h-4 w-4 text-yellow-600" />
-            🟨 Fundamentação Técnica da IA
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm whitespace-pre-wrap leading-relaxed">
-            {result.fundamentacaoTecnica}
-          </p>
+          {fontes.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                Fontes encontradas:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {fontes.map((fonte, index) => (
+                  <Badge key={index} variant="outline" className="text-xs">
+                    <FileText className="h-3 w-3 mr-1" />
+                    {fonte}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
           
-          {result.trechosRelevantes && result.trechosRelevantes.length > 0 && (
+          {fontes.length === 0 && (
+            <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-3 rounded-md">
+              <AlertCircle className="h-4 w-4" />
+              <p className="text-sm">
+                Não encontrei conteúdo relevante nas suas fontes internas para responder com precisão.
+              </p>
+            </div>
+          )}
+
+          {trechos.length > 0 && (
             <div className="mt-4 space-y-2">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Trechos Relevantes do Documento:
+                Trechos relevantes:
               </p>
               <div className="space-y-2">
-                {result.trechosRelevantes.map((trecho, index) => (
+                {trechos.map((trecho, index) => (
                   <div 
                     key={index} 
-                    className="text-xs p-2 bg-muted/50 rounded border-l-2 border-yellow-500 italic"
+                    className="text-xs p-2 bg-muted/50 rounded border-l-2 border-blue-500 italic"
                   >
                     "{trecho}"
                   </div>
@@ -140,15 +128,68 @@ const AISearchResults: React.FC<AISearchResultsProps> = ({ result, sourceInfo })
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
 
-          {result.observacoes && (
-            <div className="mt-4 p-3 bg-muted/30 rounded-lg">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Observações:</p>
-              <p className="text-sm">{result.observacoes}</p>
-            </div>
+      {/* Explicação Técnica */}
+      <Card className="border-amber-500/30 bg-amber-500/5">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-amber-600" />
+            🛠️ EXPLICAÇÃO TÉCNICA
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm whitespace-pre-wrap leading-relaxed">
+            {explicacao || 'Não foi possível gerar explicação técnica.'}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* 3 Respostas Formais */}
+      <Card className="border-primary/30 bg-primary/5">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <MessageSquare className="h-4 w-4 text-primary" />
+            📨 3 RESPOSTAS FORMAIS SUGERIDAS
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {respostasFormais.length > 0 ? (
+            respostasFormais.map((resposta, index) => (
+              <div key={index} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-primary">
+                    🟦 Modelo {index + 1}
+                  </span>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => copyToClipboard(resposta, `Resposta ${index + 1}`)}
+                  >
+                    <Copy className="h-3 w-3 mr-1" />
+                    Copiar
+                  </Button>
+                </div>
+                <p className="text-sm whitespace-pre-wrap leading-relaxed p-3 bg-muted/30 rounded-lg border">
+                  {resposta}
+                </p>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground italic">
+              Nenhuma resposta formal gerada. Verifique se existem Modelos de Resposta cadastrados.
+            </p>
           )}
         </CardContent>
       </Card>
+
+      {result.observacoes && (
+        <div className="p-3 bg-muted/30 rounded-lg">
+          <p className="text-xs font-medium text-muted-foreground mb-1">Observações:</p>
+          <p className="text-sm">{result.observacoes}</p>
+        </div>
+      )}
     </div>
   );
 };

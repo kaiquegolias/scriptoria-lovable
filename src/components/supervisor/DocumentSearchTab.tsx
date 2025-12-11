@@ -8,13 +8,23 @@ import { toast } from 'sonner';
 import { FileUp, Search, Loader2, FileText, X, AlertCircle } from 'lucide-react';
 import AISearchResults from './AISearchResults';
 
-interface SearchResult {
-  sugestaoResposta1: string;
-  sugestaoResposta2: string;
-  fundamentacaoTecnica: string;
+interface AnaliseInterna {
+  fontesEncontradas: string[];
   trechosRelevantes: string[];
-  confianca: string;
+}
+
+interface SearchResult {
+  analiseInterna?: AnaliseInterna;
+  explicacaoTecnica: string;
+  respostasFormais: string[];
+  confiancaEstimada: number;
   observacoes?: string;
+  // Legacy fields
+  sugestaoResposta1?: string;
+  sugestaoResposta2?: string;
+  fundamentacaoTecnica?: string;
+  trechosRelevantes?: string[];
+  confianca?: string;
 }
 
 const DocumentSearchTab: React.FC = () => {
