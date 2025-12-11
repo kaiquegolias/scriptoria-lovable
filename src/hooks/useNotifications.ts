@@ -27,6 +27,7 @@ export function useNotifications() {
   const [overdueTickets, setOverdueTickets] = useState<OverdueTicket[]>([]);
   const [systemAlerts, setSystemAlerts] = useState<SystemAlert[]>([]);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [dismissedAlertIds, setDismissedAlertIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
@@ -119,19 +120,32 @@ export function useNotifications() {
   }, [user]);
 
   const fetchDismissedIds = useCallback(async () => {
-    if (!user) return new Set<string>();
+    if (!user) return { tickets: new Set<string>(), alerts: new Set<string>() };
 
     try {
-      const { data: dismissed, error } = await supabase
+      // Fetch dismissed ticket notifications
+      const { data: dismissedTickets, error: ticketsError } = await supabase
         .from('dismissed_notifications')
         .select('ticket_id')
         .eq('user_id', user.id);
 
-      if (error) throw error;
-      return new Set(dismissed?.map(d => d.ticket_id) || []);
+      if (ticketsError) throw ticketsError;
+
+      // Fetch dismissed alert notifications
+      const { data: dismissedAlerts, error: alertsError } = await supabase
+        .from('dismissed_alerts')
+        .select('alert_id')
+        .eq('user_id', user.id);
+
+      if (alertsError) throw alertsError;
+
+      return {
+        tickets: new Set(dismissedTickets?.map(d => d.ticket_id) || []),
+        alerts: new Set(dismissedAlerts?.map(d => d.alert_id) || []),
+      };
     } catch (error) {
       console.error('Error fetching dismissed ids:', error);
-      return new Set<string>();
+      return { tickets: new Set<string>(), alerts: new Set<string>() };
     }
   }, [user]);
 
@@ -153,7 +167,8 @@ export function useNotifications() {
 
       setOverdueTickets(overdue);
       setSystemAlerts(alerts);
-      setDismissedIds(dismissed);
+      setDismissedIds(dismissed.tickets);
+      setDismissedAlertIds(dismissed.alerts);
     } finally {
       setLoading(false);
     }
@@ -194,6 +209,16 @@ export function useNotifications() {
         }, { onConflict: 'user_id,ticket_id' });
       }
 
+      // Dismiss all system alerts
+      const alertIds = systemAlerts.map(a => a.id);
+      
+      for (const alertId of alertIds) {
+        await supabase.from('dismissed_alerts').upsert({
+          user_id: user.id,
+          alert_id: alertId,
+        }, { onConflict: 'user_id,alert_id' });
+      }
+
       // Log the bulk dismiss action
       await supabase.from('notifications_log').insert({
         user_id: user.id,
@@ -201,13 +226,13 @@ export function useNotifications() {
         action: 'dismissed_all',
       });
 
-      // Clear system alerts from local state
-      setSystemAlerts([]);
-      setDismissedIds(new Set(ticketIds));
+      // Update local state with all dismissed IDs
+      setDismissedIds(prev => new Set([...prev, ...ticketIds]));
+      setDismissedAlertIds(prev => new Set([...prev, ...alertIds]));
     } catch (error) {
       console.error('Error dismissing all notifications:', error);
     }
-  }, [user, overdueTickets]);
+  }, [user, overdueTickets, systemAlerts]);
 
   const logNotificationClick = useCallback(async (ticketId: string) => {
     if (!user) return;
@@ -294,15 +319,16 @@ export function useNotifications() {
   }, [user, fetchAllNotifications]);
 
   const activeOverdueTickets = overdueTickets.filter(t => !dismissedIds.has(t.id));
+  const activeSystemAlerts = systemAlerts.filter(a => !dismissedAlertIds.has(a.id));
   const overdueCount = activeOverdueTickets.length;
-  const alertsCount = systemAlerts.length;
+  const alertsCount = activeSystemAlerts.length;
   const totalCount = overdueCount + alertsCount;
   const displayCount = totalCount > 99 ? '99+' : totalCount.toString();
 
   return {
     overdueTickets,
     activeOverdueTickets,
-    systemAlerts,
+    systemAlerts: activeSystemAlerts,
     overdueCount,
     alertsCount,
     totalCount,

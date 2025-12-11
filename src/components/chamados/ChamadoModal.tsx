@@ -5,6 +5,7 @@ import { format, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 import SuggestionPanel from './SuggestionPanel';
+import TicketObservations from './TicketObservations';
 import DeleteTicketModal from './DeleteTicketModal';
 
 interface ChamadoModalProps {
@@ -187,6 +188,11 @@ const ChamadoModal: React.FC<ChamadoModalProps> = ({
                 <span className="font-semibold">Atualizado em:</span>{' '}
                 {format(new Date(chamado.dataAtualizacao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
               </div>
+            </div>
+
+            {/* Observations section */}
+            <div className="mt-6">
+              <TicketObservations ticketId={chamado.id} />
             </div>
 
             {/* Suggestion Panel - only for non-resolved tickets */}
