@@ -3,9 +3,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 
+export interface AnaliseInterna {
+  fontesEncontradas: string[];
+  trechosRelevantes: string[];
+}
+
 export interface AISuggestion {
+  analiseInterna?: AnaliseInterna;
   explicacaoTecnica: string;
   respostasFormais: string[];
+  confiancaEstimada: number;
   scriptsRelacionados: Array<{
     nome: string;
     relevancia: string;

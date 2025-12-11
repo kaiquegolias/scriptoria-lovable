@@ -41,18 +41,18 @@ serve(async (req) => {
       throw new Error("Ticket not found");
     }
 
-    // Fetch user's scripts
+    // PRIORIDADE 1: Modelos de Resposta para Chamados (Scripts do usuário)
     const { data: scripts } = await supabase
       .from("scripts")
       .select("id, nome, situacao, modelo, estruturante, nivel")
       .eq("user_id", userId);
 
-    // Fetch scripts from library
+    // PRIORIDADE 2: Scripts da Biblioteca
     const { data: libraryScripts } = await supabase
       .from("scripts_library")
       .select("id, title, description, content, tags, sistema");
 
-    // Fetch closed tickets with solutions (for pattern matching)
+    // PRIORIDADE 3: Chamados encerrados com soluções
     const { data: closedTickets } = await supabase
       .from("chamados")
       .select("id, titulo, acompanhamento, classificacao, estruturante, nivel")
@@ -60,7 +60,6 @@ serve(async (req) => {
       .eq("user_id", userId)
       .limit(20);
 
-    // Fetch followups from closed tickets for learning
     const closedTicketIds = (closedTickets || []).map(t => t.id);
     const { data: followups } = await supabase
       .from("ticket_followups")
@@ -68,57 +67,72 @@ serve(async (req) => {
       .in("ticket_id", closedTicketIds.length > 0 ? closedTicketIds : ["00000000-0000-0000-0000-000000000000"])
       .eq("type", "ultimo_acompanhamento");
 
-    // Fetch WikiPEN knowledge base documents
+    // PRIORIDADE 4: KB documents
     const { data: kbDocs } = await supabase
       .from("kb_documents")
       .select("title, content, category, keywords")
-      .eq("source", "wiki_pen")
-      .limit(100);
+      .limit(50);
 
-    // Build context for AI
-    const scriptsContext = (scripts || []).map(s => 
-      `Script: ${s.nome}\nSituação: ${s.situacao}\nModelo de resposta: ${s.modelo}\nEstruturante: ${s.estruturante}\nNível: ${s.nivel}`
+    // Build context with clear priority markers
+    const modelosContext = (scripts || []).map(s => 
+      `[MODELO_RESPOSTA] Script: ${s.nome}\nSituação: ${s.situacao}\nModelo de resposta: ${s.modelo}\nEstruturante: ${s.estruturante}\nNível: ${s.nivel}`
     ).join("\n\n---\n\n");
 
-    const libraryContext = (libraryScripts || []).map(s =>
-      `Script da Biblioteca: ${s.title}\nDescrição: ${s.description || 'N/A'}\nConteúdo: ${s.content}\nTags: ${(s.tags || []).join(", ")}`
+    const scriptsContext = (libraryScripts || []).map(s =>
+      `[SCRIPT_BIBLIOTECA] Título: ${s.title}\nDescrição: ${s.description || 'N/A'}\nConteúdo: ${s.content}\nTags: ${(s.tags || []).join(", ")}`
     ).join("\n\n---\n\n");
 
     const closedTicketsContext = (closedTickets || []).map(t => {
       const followup = (followups || []).find(f => f.ticket_id === t.id);
-      return `Chamado Resolvido: ${t.titulo}\nClassificação: ${t.classificacao || 'N/A'}\nEstruturante: ${t.estruturante}\nNível: ${t.nivel}\nAcompanhamento: ${t.acompanhamento}\nSolução aplicada: ${followup?.content || 'N/A'}`;
+      return `[CHAMADO_RESOLVIDO] Título: ${t.titulo}\nClassificação: ${t.classificacao || 'N/A'}\nEstruturante: ${t.estruturante}\nNível: ${t.nivel}\nAcompanhamento: ${t.acompanhamento}\nSolução aplicada: ${followup?.content || 'N/A'}`;
     }).join("\n\n---\n\n");
 
-    // WikiPEN knowledge base context
-    const wikiPenContext = (kbDocs || []).map(doc =>
-      `DOCUMENTO WIKIPEN: ${doc.title}\nCategoria: ${doc.category || 'Geral'}\nPalavras-chave: ${(doc.keywords || []).join(", ")}\nConteúdo: ${doc.content}`
+    const kbContext = (kbDocs || []).map(doc =>
+      `[KB] ${doc.title}\nCategoria: ${doc.category || 'Geral'}\nConteúdo: ${doc.content}`
     ).join("\n\n===\n\n");
 
     const systemPrompt = `Você é um assistente especializado em suporte técnico para sistemas governamentais brasileiros (PEN e PNCP).
 
-BASE DE CONHECIMENTO WIKIPEN (DOCUMENTAÇÃO OFICIAL):
-${wikiPenContext || "Documentação não disponível"}
+REGRAS CRÍTICAS DE COMPORTAMENTO:
 
-Sua tarefa é analisar um chamado de suporte e fornecer:
-1. Uma explicação técnica clara do problema baseada na documentação oficial
-2. Três respostas formais sugeridas que podem ser enviadas ao usuário
+1. NUNCA INVENTE INFORMAÇÃO
+   - Se não encontrar conteúdo relevante nas fontes internas, diga EXPLICITAMENTE:
+   "Não encontrei conteúdo relevante nas suas fontes internas para responder com precisão."
 
-REGRAS IMPORTANTES:
-- Use linguagem formal e profissional
-- As respostas devem ser em português brasileiro
-- Considere o contexto do estruturante (${ticket.estruturante}) e nível (${ticket.nivel})
-- PRIORIZE informações da WikiPEN para fundamentar suas respostas
-- Se houver chamados similares resolvidos, utilize as soluções que funcionaram
-- Cite referências da documentação quando aplicável
+2. ORDEM DE PRIORIDADE DE BUSCA (OBRIGATÓRIO):
+   1º) [MODELO_RESPOSTA] - Modelos de Resposta para Chamados - FONTE PRINCIPAL
+   2º) [SCRIPT_BIBLIOTECA] - Scripts da Biblioteca
+   3º) [CHAMADO_RESOLVIDO] - Histórico de chamados resolvidos
+   4º) [KB] - Biblioteca KB - consultar apenas quando faltar nas fontes anteriores
 
-SCRIPTS DISPONÍVEIS DO USUÁRIO:
-${scriptsContext || "Nenhum script disponível"}
+3. NUNCA REESCREVA por conta própria - sua função é LOCALIZAR, EXTRAIR e MONTAR respostas usando as bases internas
 
-SCRIPTS DA BIBLIOTECA:
-${libraryContext || "Nenhum script na biblioteca"}
+4. SEMPRE informe a confiança estimada em PERCENTUAL (0-100) baseada em:
+   - Quantidade de evidências encontradas nas fontes internas
+   - Correspondência textual com termos pesquisados
+   - Similaridade com Modelos de Resposta existentes
+   - Presença de termos-chave nos scripts
 
-HISTÓRICO DE CHAMADOS RESOLVIDOS:
-${closedTicketsContext || "Nenhum histórico disponível"}`;
+5. COMPORTAMENTOS PROIBIDOS:
+   - Inventar respostas ou dados técnicos
+   - Gerar modelos próprios quando existem "Modelos de Resposta"
+   - Apresentar respostas sem probabilidade estimada
+   - Ignorar scripts
+   - Usar criatividade — seja OBJETIVA e baseada em dados internos
+
+FONTES DISPONÍVEIS:
+
+PRIORIDADE 1 - MODELOS DE RESPOSTA PARA CHAMADOS:
+${modelosContext || "Nenhum modelo disponível"}
+
+PRIORIDADE 2 - SCRIPTS DA BIBLIOTECA:
+${scriptsContext || "Nenhum script na biblioteca"}
+
+PRIORIDADE 3 - HISTÓRICO DE CHAMADOS RESOLVIDOS:
+${closedTicketsContext || "Nenhum histórico disponível"}
+
+PRIORIDADE 4 - BIBLIOTECA KB:
+${kbContext || "KB vazia"}`;
 
     const userPrompt = `Analise o seguinte chamado e forneça sugestões:
 
@@ -129,14 +143,25 @@ CLASSIFICAÇÃO: ${ticket.classificacao || "Não definida"}
 ACOMPANHAMENTO/DESCRIÇÃO: ${ticket.acompanhamento}
 LINKS: ${(ticket.links || []).join(", ") || "Nenhum"}
 
-Por favor, responda no seguinte formato JSON:
+INSTRUÇÕES:
+1. Busque PRIMEIRO nos Modelos de Resposta para Chamados
+2. Depois vasculhe os Scripts da Biblioteca
+3. Verifique chamados resolvidos similares
+4. Consulte KB somente quando faltar informação nas fontes acima
+
+FORMATO DE RESPOSTA OBRIGATÓRIO (JSON):
 {
-  "explicacaoTecnica": "Explicação técnica detalhada do problema...",
+  "analiseInterna": {
+    "fontesEncontradas": ["lista das fontes onde encontrou informação"],
+    "trechosRelevantes": ["trecho 1 encontrado", "trecho 2 encontrado"]
+  },
+  "explicacaoTecnica": "Explicação técnica construída a partir das fontes internas",
   "respostasFormais": [
-    "Primeira resposta formal sugerida...",
-    "Segunda resposta formal sugerida...",
-    "Terceira resposta formal sugerida..."
+    "Modelo 1 - extraído prioritariamente dos Modelos de Resposta existentes",
+    "Modelo 2 - baseado nos scripts/documentação interna",
+    "Modelo 3 - alternativa formal baseada nas fontes"
   ],
+  "confiancaEstimada": 75,
   "scriptsRelacionados": [
     {
       "nome": "Nome do script relacionado",
@@ -146,12 +171,16 @@ Por favor, responda no seguinte formato JSON:
   ],
   "chamadosSimilares": [
     {
-      "titulo": "Título do chamado similar",
+      "titulo": "Título do chamado similar encontrado",
       "similaridade": "Alta/Média/Baixa",
       "solucaoAplicada": "Resumo da solução que funcionou"
     }
   ]
-}`;
+}
+
+Se não encontrar nada relevante nas fontes internas, AVISE EXPLICITAMENTE e defina confiancaEstimada como um valor baixo (10-30).
+
+Retorne APENAS o JSON, sem markdown.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -189,10 +218,8 @@ Por favor, responda no seguinte formato JSON:
     const aiResponse = await response.json();
     const content = aiResponse.choices?.[0]?.message?.content;
 
-    // Try to parse JSON from response
     let parsedResponse;
     try {
-      // Extract JSON from response (in case there's extra text)
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         parsedResponse = JSON.parse(jsonMatch[0]);
@@ -202,8 +229,13 @@ Por favor, responda no seguinte formato JSON:
     } catch (parseError) {
       console.error("Failed to parse AI response:", parseError);
       parsedResponse = {
+        analiseInterna: {
+          fontesEncontradas: [],
+          trechosRelevantes: []
+        },
         explicacaoTecnica: content,
         respostasFormais: [],
+        confiancaEstimada: 20,
         scriptsRelacionados: [],
         chamadosSimilares: []
       };
