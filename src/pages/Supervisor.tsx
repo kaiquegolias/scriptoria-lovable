@@ -11,7 +11,9 @@ import QueryConsole from '@/components/supervisor/QueryConsole';
 import AlertsConfig from '@/components/supervisor/AlertsConfig';
 import RealtimeIndicator from '@/components/supervisor/RealtimeIndicator';
 import SystemAlertsPanel from '@/components/supervisor/SystemAlertsPanel';
-import { LayoutDashboard, FileText, Bell, Search, History, RefreshCw } from 'lucide-react';
+import AIInsightsPanel from '@/components/supervisor/AIInsightsPanel';
+import WikiPENImporter from '@/components/supervisor/WikiPENImporter';
+import { LayoutDashboard, FileText, Bell, Search, History, RefreshCw, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const Supervisor: React.FC = () => {
@@ -53,10 +55,14 @@ const Supervisor: React.FC = () => {
       <RealtimeIndicator />
 
       <Tabs defaultValue="dashboard" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
           <TabsTrigger value="dashboard" className="flex items-center gap-2">
             <LayoutDashboard className="h-4 w-4" />
             <span className="hidden sm:inline">Dashboard</span>
+          </TabsTrigger>
+          <TabsTrigger value="ai-insights" className="flex items-center gap-2">
+            <Brain className="h-4 w-4" />
+            <span className="hidden sm:inline">IA</span>
           </TabsTrigger>
           <TabsTrigger value="logs" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
@@ -79,6 +85,15 @@ const Supervisor: React.FC = () => {
         <TabsContent value="dashboard" className="space-y-6">
           <MetricsCards metrics={metrics} loading={metricsLoading} />
           <SupervisorCharts metrics={metrics} loading={metricsLoading} />
+        </TabsContent>
+
+        <TabsContent value="ai-insights" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <AIInsightsPanel metrics={metrics} analysisType="dashboard" />
+            <div className="space-y-6">
+              <WikiPENImporter />
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="logs" className="space-y-6">
