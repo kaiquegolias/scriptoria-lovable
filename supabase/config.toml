@@ -6,5 +6,8 @@ verify_jwt = false
 [functions.supervisor-ai-analysis]
 verify_jwt = false
 
-[functions.import-kb-content]
+[functions.ai-document-search]
+verify_jwt = false
+
+[functions.crawl-urls]
 verify_jwt = false
