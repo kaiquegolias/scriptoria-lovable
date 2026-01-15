@@ -127,10 +127,13 @@ export function useTicketClose() {
         },
       });
 
-      // Index the closed ticket for future suggestions
-      if (input.ultimoAcompanhamento) {
-        await indexClosedTicket(input.ticketId, ticket.titulo, input.ultimoAcompanhamento);
-      }
+      // Index the closed ticket for future suggestions (always index, even without ultimo_acompanhamento)
+      await indexClosedTicket(
+        input.ticketId, 
+        ticket.titulo, 
+        input.ultimoAcompanhamento || '', 
+        input.classificacao
+      );
 
       toast.success('Chamado encerrado com sucesso!');
       return true;
@@ -152,11 +155,24 @@ export function useTicketClose() {
 }
 
 // Helper function to index closed ticket for KB
-async function indexClosedTicket(ticketId: string, titulo: string, ultimoAcompanhamento: string) {
+async function indexClosedTicket(
+  ticketId: string, 
+  titulo: string, 
+  ultimoAcompanhamento: string,
+  classificacao: string
+) {
   try {
-    const text = `${titulo} ${ultimoAcompanhamento}`;
+    const text = `${titulo} ${ultimoAcompanhamento} ${classificacao}`;
     const tokens = generateTokens(text);
     const keywords = extractKeywords(text, 10);
+
+    // Build content preview with classification and ultimo_acompanhamento
+    const contentParts: string[] = [];
+    contentParts.push(`📋 Classificação: ${classificacao}`);
+    if (ultimoAcompanhamento) {
+      contentParts.push(`\n📝 Último Acompanhamento:\n${ultimoAcompanhamento}`);
+    }
+    const contentPreview = contentParts.join('\n');
 
     // Delete existing entry first to avoid upsert conflicts
     await supabase
@@ -165,23 +181,23 @@ async function indexClosedTicket(ticketId: string, titulo: string, ultimoAcompan
       .eq('source_id', ticketId)
       .eq('source_type', 'ticket');
 
-    // Insert new entry
+    // Insert new entry with full content
     const { error } = await supabase
       .from('kb_vectors')
       .insert({
         source_type: 'ticket',
         source_id: ticketId,
         title: titulo,
-        content_preview: ultimoAcompanhamento.substring(0, 200),
+        content_preview: contentPreview.substring(0, 500), // Increased limit
         tokens,
-        keywords,
+        keywords: [...keywords, classificacao.toLowerCase()], // Add classification as keyword
         updated_at: new Date().toISOString(),
       });
 
     if (error) {
       console.error('Error inserting kb_vector:', error);
     } else {
-      console.log('Ticket indexed successfully:', ticketId, titulo);
+      console.log('Ticket indexed successfully:', ticketId, titulo, classificacao);
     }
   } catch (error) {
     console.error('Error indexing closed ticket:', error);

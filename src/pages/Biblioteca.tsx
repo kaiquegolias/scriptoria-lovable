@@ -492,56 +492,96 @@ const KBItemCard = ({
   item: KBItem; 
   copiedId: string | null;
   onCopy: (content: string, id: string) => void;
-}) => (
-  <Card className="flex flex-col h-full border-l-4 border-l-orange-500">
-    <CardHeader>
-      <CardTitle className="flex items-start gap-2 text-base">
-        <Ticket size={18} className="text-orange-500 mt-0.5 flex-shrink-0" />
-        <span className="line-clamp-2">{item.title || 'Sem título'}</span>
-      </CardTitle>
-    </CardHeader>
-    <CardContent className="flex-grow">
-      <div className="bg-secondary/50 rounded-md p-2 mb-3 max-h-24 overflow-hidden">
-        <p className="text-sm line-clamp-3 whitespace-pre-wrap">
-          {item.content_preview || 'Sem conteúdo'}
-        </p>
-      </div>
+}) => {
+  // Parse content_preview to extract classification and ultimo_acompanhamento
+  const parseContent = (content: string | null) => {
+    if (!content) return { classificacao: null, ultimoAcompanhamento: null };
+    
+    const classMatch = content.match(/📋 Classificação: ([^\n]+)/);
+    const acompMatch = content.match(/📝 Último Acompanhamento:\n([\s\S]*)/);
+    
+    return {
+      classificacao: classMatch ? classMatch[1].trim() : null,
+      ultimoAcompanhamento: acompMatch ? acompMatch[1].trim() : content
+    };
+  };
 
-      {item.keywords && item.keywords.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-3">
-          {item.keywords.slice(0, 4).map((keyword, index) => (
-            <Badge key={index} variant="outline" className="text-xs">
-              {keyword}
-            </Badge>
-          ))}
-          {item.keywords.length > 4 && (
-            <Badge variant="outline" className="text-xs">
-              +{item.keywords.length - 4}
-            </Badge>
-          )}
-        </div>
-      )}
+  const { classificacao, ultimoAcompanhamento } = parseContent(item.content_preview);
 
-      <div className="flex items-center text-xs text-muted-foreground">
-        <Calendar size={12} className="mr-1" />
-        {item.updated_at && format(new Date(item.updated_at), "dd/MM/yy HH:mm", { locale: ptBR })}
-      </div>
-    </CardContent>
-    <CardFooter className="border-t pt-3">
-      <Button 
-        variant="ghost" 
-        size="sm"
-        onClick={() => onCopy(item.content_preview || '', item.id)}
-      >
-        {copiedId === item.id ? (
-          <Check size={14} className="mr-1 text-green-500" />
-        ) : (
-          <Copy size={14} className="mr-1" />
+  const getClassificacaoBadge = (classif: string | null) => {
+    if (!classif) return 'bg-muted text-muted-foreground';
+    if (classif.includes('Falta de comunicação')) return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
+    if (classif.includes('Não pertinentes')) return 'bg-red-500/10 text-red-600 border-red-500/20';
+    return 'bg-green-500/10 text-green-600 border-green-500/20';
+  };
+
+  return (
+    <Card className="flex flex-col h-full border-l-4 border-l-orange-500">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-start gap-2 text-base">
+          <Ticket size={18} className="text-orange-500 mt-0.5 flex-shrink-0" />
+          <span className="line-clamp-2">{item.title || 'Sem título'}</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex-grow">
+        {/* Classificação */}
+        {classificacao && (
+          <div className="mb-3">
+            <Badge variant="outline" className={`text-xs ${getClassificacaoBadge(classificacao)}`}>
+              📋 {classificacao}
+            </Badge>
+          </div>
         )}
-        Copiar
-      </Button>
-    </CardFooter>
-  </Card>
-);
+
+        {/* Último Acompanhamento */}
+        {ultimoAcompanhamento && (
+          <div className="mb-3">
+            <p className="text-xs font-medium text-muted-foreground mb-1">📝 Último Acompanhamento</p>
+            <div className="bg-secondary/50 rounded-md p-2 max-h-32 overflow-hidden">
+              <p className="text-sm line-clamp-4 whitespace-pre-wrap">
+                {ultimoAcompanhamento}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Keywords */}
+        {item.keywords && item.keywords.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-3">
+            {item.keywords.slice(0, 4).map((keyword, index) => (
+              <Badge key={index} variant="outline" className="text-xs">
+                {keyword}
+              </Badge>
+            ))}
+            {item.keywords.length > 4 && (
+              <Badge variant="outline" className="text-xs">
+                +{item.keywords.length - 4}
+              </Badge>
+            )}
+          </div>
+        )}
+
+        <div className="flex items-center text-xs text-muted-foreground">
+          <Calendar size={12} className="mr-1" />
+          {item.updated_at && format(new Date(item.updated_at), "dd/MM/yy HH:mm", { locale: ptBR })}
+        </div>
+      </CardContent>
+      <CardFooter className="border-t pt-3">
+        <Button 
+          variant="ghost" 
+          size="sm"
+          onClick={() => onCopy(ultimoAcompanhamento || item.content_preview || '', item.id)}
+        >
+          {copiedId === item.id ? (
+            <Check size={14} className="mr-1 text-green-500" />
+          ) : (
+            <Copy size={14} className="mr-1" />
+          )}
+          Copiar
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+};
 
 export default Biblioteca;
