@@ -135,6 +135,10 @@ const Biblioteca = () => {
     navigate(`/scripts?id=${script.id}`);
   };
 
+  const goToTicket = (item: KBItem) => {
+    navigate(`/chamados-encerrados?id=${item.source_id}`);
+  };
+
   if (!user) return null;
 
   const loading = scriptsLoading || kbLoading;
@@ -287,6 +291,7 @@ const Biblioteca = () => {
                         item={item}
                         copiedId={copiedId}
                         onCopy={copyToClipboard}
+                        onClick={goToTicket}
                       />
                     ))}
                   </div>
@@ -338,6 +343,7 @@ const Biblioteca = () => {
                   item={item}
                   copiedId={copiedId}
                   onCopy={copyToClipboard}
+                  onClick={goToTicket}
                 />
               ))}
             </div>
@@ -487,11 +493,13 @@ const ScriptKBCard = ({
 const KBItemCard = ({ 
   item, 
   copiedId, 
-  onCopy 
+  onCopy,
+  onClick
 }: { 
   item: KBItem; 
   copiedId: string | null;
   onCopy: (content: string, id: string) => void;
+  onClick: (item: KBItem) => void;
 }) => {
   // Parse content_preview to extract classification and ultimo_acompanhamento
   const parseContent = (content: string | null) => {
@@ -516,7 +524,10 @@ const KBItemCard = ({
   };
 
   return (
-    <Card className="flex flex-col h-full border-l-4 border-l-orange-500">
+    <Card 
+      className="flex flex-col h-full border-l-4 border-l-orange-500 hover:shadow-md transition-shadow cursor-pointer"
+      onClick={() => onClick(item)}
+    >
       <CardHeader className="pb-2">
         <CardTitle className="flex items-start gap-2 text-base">
           <Ticket size={18} className="text-orange-500 mt-0.5 flex-shrink-0" />
@@ -570,7 +581,10 @@ const KBItemCard = ({
         <Button 
           variant="ghost" 
           size="sm"
-          onClick={() => onCopy(ultimoAcompanhamento || item.content_preview || '', item.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onCopy(ultimoAcompanhamento || item.content_preview || '', item.id);
+          }}
         >
           {copiedId === item.id ? (
             <Check size={14} className="mr-1 text-green-500" />
