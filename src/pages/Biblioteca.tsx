@@ -4,9 +4,11 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Search, Calendar, Tag, 
-  RefreshCw, Database, FileCode, Copy, Check, Ticket
+  RefreshCw, Database, FileCode, Copy, Check, Ticket, X
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -39,6 +41,7 @@ const Biblioteca = () => {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [selectedKBItem, setSelectedKBItem] = useState<KBItem | null>(null);
   
   // KB Items from kb_vectors (chamados encerrados)
   const [kbItems, setKbItems] = useState<KBItem[]>([]);
@@ -135,8 +138,8 @@ const Biblioteca = () => {
     navigate(`/scripts?id=${script.id}`);
   };
 
-  const goToTicket = (item: KBItem) => {
-    navigate(`/chamados-encerrados?id=${item.source_id}`);
+  const openTicketModal = (item: KBItem) => {
+    setSelectedKBItem(item);
   };
 
   if (!user) return null;
@@ -291,7 +294,7 @@ const Biblioteca = () => {
                         item={item}
                         copiedId={copiedId}
                         onCopy={copyToClipboard}
-                        onClick={goToTicket}
+                        onClick={openTicketModal}
                       />
                     ))}
                   </div>
@@ -343,7 +346,7 @@ const Biblioteca = () => {
                   item={item}
                   copiedId={copiedId}
                   onCopy={copyToClipboard}
-                  onClick={goToTicket}
+                  onClick={openTicketModal}
                 />
               ))}
             </div>
@@ -356,6 +359,14 @@ const Biblioteca = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Modal para visualizar chamado */}
+      <KBItemModal 
+        item={selectedKBItem} 
+        onClose={() => setSelectedKBItem(null)}
+        onCopy={copyToClipboard}
+        copiedId={copiedId}
+      />
     </div>
   );
 };
@@ -595,6 +606,115 @@ const KBItemCard = ({
         </Button>
       </CardFooter>
     </Card>
+  );
+};
+
+// Modal para visualização detalhada do chamado
+const KBItemModal = ({ 
+  item, 
+  onClose,
+  onCopy,
+  copiedId
+}: { 
+  item: KBItem | null; 
+  onClose: () => void;
+  onCopy: (content: string, id: string) => void;
+  copiedId: string | null;
+}) => {
+  if (!item) return null;
+
+  // Parse content_preview to extract classification and ultimo_acompanhamento
+  const parseContent = (content: string | null) => {
+    if (!content) return { classificacao: null, ultimoAcompanhamento: null };
+    
+    const classMatch = content.match(/📋 Classificação: ([^\n]+)/);
+    const acompMatch = content.match(/📝 Último Acompanhamento:\n([\s\S]*)/);
+    
+    return {
+      classificacao: classMatch ? classMatch[1].trim() : null,
+      ultimoAcompanhamento: acompMatch ? acompMatch[1].trim() : content
+    };
+  };
+
+  const { classificacao, ultimoAcompanhamento } = parseContent(item.content_preview);
+
+  const getClassificacaoBadge = (classif: string | null) => {
+    if (!classif) return 'bg-muted text-muted-foreground';
+    if (classif.includes('Falta de comunicação')) return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
+    if (classif.includes('Não pertinentes')) return 'bg-red-500/10 text-red-600 border-red-500/20';
+    return 'bg-green-500/10 text-green-600 border-green-500/20';
+  };
+
+  return (
+    <Dialog open={!!item} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[85vh]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-lg">
+            <Ticket size={20} className="text-orange-500" />
+            {item.title || 'Sem título'}
+          </DialogTitle>
+          <DialogDescription className="flex items-center gap-2 text-sm">
+            <Calendar size={14} />
+            {item.updated_at && format(new Date(item.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+          </DialogDescription>
+        </DialogHeader>
+
+        <ScrollArea className="max-h-[60vh] pr-4">
+          <div className="space-y-4">
+            {/* Classificação */}
+            {classificacao && (
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-2">📋 Classificação</h4>
+                <Badge variant="outline" className={`${getClassificacaoBadge(classificacao)}`}>
+                  {classificacao}
+                </Badge>
+              </div>
+            )}
+
+            {/* Último Acompanhamento */}
+            {ultimoAcompanhamento && (
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-2">📝 Último Acompanhamento</h4>
+                <div className="bg-secondary/50 rounded-md p-4">
+                  <p className="text-sm whitespace-pre-wrap">{ultimoAcompanhamento}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Keywords */}
+            {item.keywords && item.keywords.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-2">🏷️ Palavras-chave</h4>
+                <div className="flex flex-wrap gap-2">
+                  {item.keywords.map((keyword, index) => (
+                    <Badge key={index} variant="outline" className="text-xs">
+                      {keyword}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+
+        <div className="flex justify-end gap-2 pt-4 border-t">
+          <Button 
+            variant="outline" 
+            onClick={() => onCopy(ultimoAcompanhamento || item.content_preview || '', item.id)}
+          >
+            {copiedId === item.id ? (
+              <Check size={16} className="mr-2 text-green-500" />
+            ) : (
+              <Copy size={16} className="mr-2" />
+            )}
+            Copiar Conteúdo
+          </Button>
+          <Button variant="default" onClick={onClose}>
+            Fechar
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
