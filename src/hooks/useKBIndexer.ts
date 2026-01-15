@@ -78,11 +78,30 @@ export function useKBIndexer() {
     id: string;
     titulo: string;
     acompanhamento: string;
+    classificacao?: string | null;
+    ultimoAcompanhamento?: string | null;
   }) => {
-    const fullText = `${ticket.titulo} ${ticket.acompanhamento}`;
+    // Build comprehensive text for tokenization
+    const fullText = `${ticket.titulo} ${ticket.acompanhamento} ${ticket.classificacao || ''} ${ticket.ultimoAcompanhamento || ''}`;
     const tokens = generateTokens(fullText);
     const keywords = extractKeywords(fullText);
-    const contentPreview = ticket.acompanhamento.substring(0, 200);
+    
+    // Add classification to keywords if present
+    if (ticket.classificacao) {
+      keywords.push(ticket.classificacao.toLowerCase());
+    }
+
+    // Build content preview with classification and ultimo_acompanhamento
+    const contentParts: string[] = [];
+    if (ticket.classificacao) {
+      contentParts.push(`📋 Classificação: ${ticket.classificacao}`);
+    }
+    if (ticket.ultimoAcompanhamento) {
+      contentParts.push(`📝 Último Acompanhamento:\n${ticket.ultimoAcompanhamento}`);
+    } else if (ticket.acompanhamento) {
+      contentParts.push(`📝 Último Acompanhamento:\n${ticket.acompanhamento.substring(0, 300)}`);
+    }
+    const contentPreview = contentParts.join('\n').substring(0, 500);
 
     // Delete existing and insert new
     await supabase
@@ -99,7 +118,7 @@ export function useKBIndexer() {
         title: ticket.titulo,
         content_preview: contentPreview,
         tokens,
-        keywords,
+        keywords: [...new Set(keywords)], // Remove duplicates
       });
   }, []);
 
@@ -139,7 +158,7 @@ export function useKBIndexer() {
       // Only index resolved tickets with content
       const { data: tickets, error } = await supabase
         .from('chamados')
-        .select('id, titulo, acompanhamento')
+        .select('id, titulo, acompanhamento, classificacao')
         .eq('status', 'resolvido');
 
       if (error) throw error;
@@ -149,7 +168,22 @@ export function useKBIndexer() {
 
       for (let i = 0; i < (tickets?.length || 0); i++) {
         const ticket = tickets![i];
-        await indexTicket(ticket);
+        
+        // Fetch ultimo_acompanhamento from ticket_followups
+        const { data: followups } = await supabase
+          .from('ticket_followups')
+          .select('content')
+          .eq('ticket_id', ticket.id)
+          .eq('type', 'ultimo_acompanhamento')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        const ultimoAcompanhamento = followups?.[0]?.content || null;
+
+        await indexTicket({
+          ...ticket,
+          ultimoAcompanhamento,
+        });
         setProgress({ current: i + 1, total });
       }
 
