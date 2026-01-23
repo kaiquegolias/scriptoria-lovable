@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Chamado } from './ChamadoCard';
 import { X, Edit, CheckCircle, RefreshCw, ExternalLink, Calendar, AlertCircle, Trash2 } from 'lucide-react';
 import { format, isAfter } from 'date-fns';
@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SuggestionPanel from './SuggestionPanel';
 import TicketObservations from './TicketObservations';
 import DeleteTicketModal from './DeleteTicketModal';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ChamadoModalProps {
   chamado: Chamado;
@@ -26,6 +27,69 @@ const ChamadoModal: React.FC<ChamadoModalProps> = ({
   onReopen 
 }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [ultimoAcompanhamento, setUltimoAcompanhamento] = useState<{
+    content: string;
+    createdAt: string;
+    userName: string;
+    classificacao?: string;
+  } | null>(null);
+
+  // Fetch ultimo_acompanhamento for resolved tickets
+  useEffect(() => {
+    const fetchUltimoAcompanhamento = async () => {
+      if (chamado.status !== 'resolvido') {
+        setUltimoAcompanhamento(null);
+        return;
+      }
+
+      try {
+        // Get ultimo_acompanhamento
+        const { data: followupData } = await supabase
+          .from('ticket_followups')
+          .select('content, created_at, created_by')
+          .eq('ticket_id', chamado.id)
+          .eq('type', 'ultimo_acompanhamento')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        // Get classificacao from chamados table
+        const { data: chamadoData } = await supabase
+          .from('chamados')
+          .select('classificacao')
+          .eq('id', chamado.id)
+          .single();
+
+        // Get user name if we have followup data
+        let userName = 'Usuário';
+        if (followupData?.created_by) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('nome')
+            .eq('user_id', followupData.created_by)
+            .maybeSingle();
+          
+          if (profile?.nome) {
+            userName = profile.nome;
+          }
+        }
+
+        // Set ultimo acompanhamento only if we have content or classificacao
+        if (followupData || chamadoData?.classificacao) {
+          setUltimoAcompanhamento({
+            content: followupData?.content || '',
+            createdAt: followupData?.created_at || chamado.dataAtualizacao,
+            userName,
+            classificacao: chamadoData?.classificacao || undefined
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching ultimo_acompanhamento:', err);
+      }
+    };
+
+    fetchUltimoAcompanhamento();
+  }, [chamado.id, chamado.status, chamado.dataAtualizacao]);
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -189,6 +253,37 @@ const ChamadoModal: React.FC<ChamadoModalProps> = ({
                 {format(new Date(chamado.dataAtualizacao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
               </div>
             </div>
+
+            {/* Encerramento info - for resolved tickets */}
+            {ultimoAcompanhamento && chamado.status === 'resolvido' && (
+              <div className="mt-6 p-4 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
+                <div className="flex items-center gap-2 mb-3">
+                  <CheckCircle size={18} className="text-green-600" />
+                  <h3 className="text-sm font-semibold text-green-700 dark:text-green-300">
+                    Informações do Encerramento
+                  </h3>
+                </div>
+                {ultimoAcompanhamento.classificacao && (
+                  <div className="mb-3">
+                    <span className="text-xs font-medium text-muted-foreground block mb-1">Classificação:</span>
+                    <span className="px-3 py-1 rounded-full bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200 font-medium text-sm">
+                      {ultimoAcompanhamento.classificacao}
+                    </span>
+                  </div>
+                )}
+                {ultimoAcompanhamento.content && (
+                  <div className="mb-3">
+                    <span className="text-xs font-medium text-muted-foreground block mb-1">Último Acompanhamento:</span>
+                    <div className="p-3 bg-white dark:bg-background rounded border whitespace-pre-wrap text-sm">
+                      {ultimoAcompanhamento.content}
+                    </div>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Encerrado por {ultimoAcompanhamento.userName} em {format(new Date(ultimoAcompanhamento.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                </p>
+              </div>
+            )}
 
             {/* Observations section */}
             <div className="mt-6">
