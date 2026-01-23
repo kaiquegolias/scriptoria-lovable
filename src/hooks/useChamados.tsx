@@ -4,7 +4,8 @@ import { toast } from 'sonner';
 import { Chamado } from '@/components/chamados/ChamadoCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
-import { addBusinessDays } from 'date-fns';
+import { addBusinessDays, format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export function useChamados(encerrados = false) {
   const [chamados, setChamados] = useState<Chamado[]>([]);
@@ -259,6 +260,51 @@ export function useChamados(encerrados = false) {
     }
 
     try {
+      // First, get the current chamado data including classificacao
+      const { data: currentChamado, error: fetchError } = await supabase
+        .from('chamados')
+        .select('classificacao, data_atualizacao')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      // Get the ultimo_acompanhamento if exists
+      const { data: ultimoAcomp } = await supabase
+        .from('ticket_followups')
+        .select('content, created_at')
+        .eq('ticket_id', id)
+        .eq('type', 'ultimo_acompanhamento')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      // Build the reopen observation message
+      const closedDate = currentChamado?.data_atualizacao 
+        ? format(new Date(currentChamado.data_atualizacao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+        : 'data desconhecida';
+      
+      const classificacao = currentChamado?.classificacao || 'não especificado';
+      
+      let reopenObservation = `🔄 Chamado reaberto. Anteriormente encerrado em ${closedDate} com classificação: "${classificacao}".`;
+      
+      if (ultimoAcomp?.content) {
+        reopenObservation += `\n\n📝 Último acompanhamento anterior:\n${ultimoAcomp.content}`;
+      }
+
+      // Insert the reopen observation
+      await supabase
+        .from('ticket_followups')
+        .insert({
+          ticket_id: id,
+          type: 'observation',
+          content: reopenObservation,
+          created_by: user.id,
+        });
+
+      // Update the chamado status
       const { data, error } = await supabase
         .from('chamados')
         .update({
