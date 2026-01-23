@@ -26,7 +26,7 @@ const Index = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
-              ScriptFlow
+              Thoth
             </motion.h1>
             
             <motion.p 
@@ -98,7 +98,7 @@ const Index = () => {
       </main>
       
       <footer className="py-6 text-center text-sm text-foreground/60">
-        <p>&copy; {new Date().getFullYear()} ScriptFlow. Todos os direitos reservados.</p>
+        <p>&copy; {new Date().getFullYear()} Thoth. Todos os direitos reservados.</p>
       </footer>
     </div>
   );

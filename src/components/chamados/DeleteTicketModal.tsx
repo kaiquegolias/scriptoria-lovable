@@ -140,7 +140,7 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
               <Input
                 id="password"
                 type="password"
-                placeholder="Digite sua senha do ScriptFlow"
+                placeholder="Digite sua senha do Thoth"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}

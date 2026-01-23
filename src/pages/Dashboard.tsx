@@ -91,7 +91,7 @@ const Dashboard = () => {
   if (!user) {
     return (
       <div className="container mx-auto px-4 py-8 animate-fade-in text-center">
-        <h1 className="text-2xl font-bold mb-4">Bem-vindo ao ScriptFlow</h1>
+        <h1 className="text-2xl font-bold mb-4">Bem-vindo ao Thoth</h1>
         <p className="mb-8">Por favor, faça login para acessar seu dashboard.</p>
       </div>
     );
