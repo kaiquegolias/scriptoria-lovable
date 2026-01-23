@@ -35,6 +35,13 @@ interface LastObservation {
   userName: string;
 }
 
+interface UltimoAcompanhamento {
+  content: string;
+  createdAt: string;
+  userName: string;
+  classificacao?: string;
+}
+
 const ChamadoCard: React.FC<ChamadoCardProps> = ({ 
   chamado, 
   onEdit, 
@@ -45,8 +52,9 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({
 }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [lastObservation, setLastObservation] = useState<LastObservation | null>(null);
+  const [ultimoAcompanhamento, setUltimoAcompanhamento] = useState<UltimoAcompanhamento | null>(null);
 
-  // Fetch last observation for this ticket
+  // Fetch last observation and ultimo_acompanhamento for this ticket
   useEffect(() => {
     const fetchLastObservation = async () => {
       try {
@@ -85,8 +93,71 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({
       }
     };
 
+    // Fetch ultimo_acompanhamento for resolved tickets
+    const fetchUltimoAcompanhamento = async () => {
+      if (chamado.status !== 'resolvido') {
+        setUltimoAcompanhamento(null);
+        return;
+      }
+
+      try {
+        // Get ultimo_acompanhamento
+        const { data: followupData, error: followupError } = await supabase
+          .from('ticket_followups')
+          .select('content, created_at, created_by')
+          .eq('ticket_id', chamado.id)
+          .eq('type', 'ultimo_acompanhamento')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (followupError) {
+          console.error('Error fetching ultimo_acompanhamento:', followupError);
+          return;
+        }
+
+        // Get classificacao from chamados table
+        const { data: chamadoData, error: chamadoError } = await supabase
+          .from('chamados')
+          .select('classificacao')
+          .eq('id', chamado.id)
+          .single();
+
+        if (chamadoError) {
+          console.error('Error fetching classificacao:', chamadoError);
+        }
+
+        // Get user name if we have followup data
+        let userName = 'Usuário';
+        if (followupData?.created_by) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('nome')
+            .eq('user_id', followupData.created_by)
+            .maybeSingle();
+          
+          if (profile?.nome) {
+            userName = profile.nome;
+          }
+        }
+
+        // Set ultimo acompanhamento only if we have content or classificacao
+        if (followupData || chamadoData?.classificacao) {
+          setUltimoAcompanhamento({
+            content: followupData?.content || '',
+            createdAt: followupData?.created_at || chamado.dataAtualizacao,
+            userName,
+            classificacao: chamadoData?.classificacao || undefined
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching ultimo_acompanhamento:', err);
+      }
+    };
+
     fetchLastObservation();
-  }, [chamado.id, chamado.dataAtualizacao]);
+    fetchUltimoAcompanhamento();
+  }, [chamado.id, chamado.dataAtualizacao, chamado.status]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -233,12 +304,37 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({
         <p className="text-sm text-foreground/80 line-clamp-2 bg-white/50 p-2 rounded">{chamado.acompanhamento}</p>
       </div>
 
+      {/* Último Acompanhamento - for resolved tickets */}
+      {ultimoAcompanhamento && chamado.status === 'resolvido' && (
+        <div className="mb-4 p-3 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
+          <div className="flex items-center gap-2 mb-2">
+            <CheckCircle size={14} className="text-green-600" />
+            <h4 className="text-xs font-medium uppercase text-green-700 dark:text-green-300">
+              Encerramento
+            </h4>
+          </div>
+          {ultimoAcompanhamento.classificacao && (
+            <div className="mb-2">
+              <span className="text-xs px-2 py-0.5 rounded-full bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200 font-medium">
+                {ultimoAcompanhamento.classificacao}
+              </span>
+            </div>
+          )}
+          {ultimoAcompanhamento.content && (
+            <p className="text-sm text-foreground/80 line-clamp-3">{ultimoAcompanhamento.content}</p>
+          )}
+          <p className="text-xs text-muted-foreground mt-1">
+            {ultimoAcompanhamento.userName} • {format(new Date(ultimoAcompanhamento.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+          </p>
+        </div>
+      )}
+
       {/* Última Observação */}
       {lastObservation && (
-        <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
           <div className="flex items-center gap-2 mb-1">
             <MessageCircle size={14} className="text-blue-600" />
-            <h4 className="text-xs font-medium uppercase text-blue-700">
+            <h4 className="text-xs font-medium uppercase text-blue-700 dark:text-blue-300">
               Última Observação
             </h4>
           </div>
