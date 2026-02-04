@@ -1,11 +1,26 @@
-
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash } from 'lucide-react';
+import { X, Plus, Trash, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { Chamado } from './ChamadoCard';
+import { PEN_PRODUCTS, getProductByValue, getModuleByValue } from '@/data/penProducts';
+
+interface ChamadoFormState {
+  id?: string;
+  titulo: string;
+  status: 'agendados' | 'agendados_aguardando' | 'agendados_planner' | 'em_andamento' | 'resolvido';
+  estruturante: 'PNCP' | 'PEN' | 'Outros';
+  nivel: 'N1' | 'N2' | 'N3';
+  acompanhamento: string;
+  links: string[];
+  dataLimite: string | null;
+  penProduto?: string;
+  penModulo?: string;
+  penPo?: string;
+  penPoSubstituto?: string;
+}
 
 interface ChamadoFormProps {
-  onSave: (chamado: Omit<Chamado, 'id' | 'dataCriacao' | 'dataAtualizacao'> & { id?: string }) => void;
+  onSave: (chamado: ChamadoFormState) => void;
   onClose: () => void;
   chamado?: Chamado;
 }
@@ -34,7 +49,7 @@ const STORAGE_KEY = 'chamadoFormState';
 const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) => {
   const isEditing = !!chamado;
   
-  const [formState, setFormState] = useState<Omit<Chamado, 'id' | 'dataCriacao' | 'dataAtualizacao'> & { id?: string }>(() => {
+  const [formState, setFormState] = useState<ChamadoFormState>(() => {
     // Try to restore form state from localStorage if not editing
     if (!isEditing) {
       const savedState = localStorage.getItem(STORAGE_KEY);
@@ -56,7 +71,11 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
       nivel: chamado.nivel,
       acompanhamento: chamado.acompanhamento,
       links: chamado.links || [],
-      dataLimite: chamado.dataLimite
+      dataLimite: chamado.dataLimite,
+      penProduto: '',
+      penModulo: '',
+      penPo: '',
+      penPoSubstituto: ''
     } : {
       titulo: '',
       status: 'em_andamento',
@@ -64,11 +83,19 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
       nivel: 'N1',
       acompanhamento: '',
       links: [],
-      dataLimite: null
+      dataLimite: null,
+      penProduto: '',
+      penModulo: '',
+      penPo: '',
+      penPoSubstituto: ''
     };
   });
   
   const [newLink, setNewLink] = useState('');
+  
+  // Get available modules based on selected product
+  const selectedProduct = formState.penProduto ? getProductByValue(formState.penProduto) : null;
+  const availableModules = selectedProduct?.modules || [];
   
   // Save form state to localStorage when it changes
   useEffect(() => {
@@ -84,6 +111,51 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    
+    // Reset PEN fields when estruturante changes
+    if (name === 'estruturante') {
+      if (value !== 'PEN') {
+        setFormState(prev => ({ 
+          ...prev, 
+          estruturante: value as 'PNCP' | 'PEN' | 'Outros',
+          penProduto: '',
+          penModulo: '',
+          penPo: '',
+          penPoSubstituto: ''
+        }));
+      } else {
+        setFormState(prev => ({ 
+          ...prev, 
+          estruturante: value as 'PNCP' | 'PEN' | 'Outros'
+        }));
+      }
+      return;
+    }
+    
+    // Reset module and PO when product changes
+    if (name === 'penProduto') {
+      setFormState(prev => ({ 
+        ...prev, 
+        penProduto: value,
+        penModulo: '',
+        penPo: '',
+        penPoSubstituto: ''
+      }));
+      return;
+    }
+    
+    // Update PO info when module changes
+    if (name === 'penModulo' && formState.penProduto) {
+      const module = getModuleByValue(formState.penProduto, value);
+      setFormState(prev => ({ 
+        ...prev, 
+        penModulo: value,
+        penPo: module?.po || '',
+        penPoSubstituto: module?.poSubstituto || ''
+      }));
+      return;
+    }
+    
     setFormState(prev => ({ ...prev, [name]: value }));
   };
 
@@ -226,6 +298,76 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
               </div>
             </div>
             
+            {/* PEN Product and Module Selection */}
+            {formState.estruturante === 'PEN' && (
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                <h3 className="font-medium text-sm flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Detalhes do Produto PEN
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="penProduto" className="block text-sm font-medium mb-1">
+                      Produto
+                    </label>
+                    <select
+                      id="penProduto"
+                      name="penProduto"
+                      value={formState.penProduto || ''}
+                      onChange={handleChange}
+                      className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background"
+                    >
+                      <option value="">Selecione um produto</option>
+                      {PEN_PRODUCTS.map(product => (
+                        <option key={product.value} value={product.value}>
+                          {product.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {formState.penProduto && (
+                    <div>
+                      <label htmlFor="penModulo" className="block text-sm font-medium mb-1">
+                        Módulo
+                      </label>
+                      <select
+                        id="penModulo"
+                        name="penModulo"
+                        value={formState.penModulo || ''}
+                        onChange={handleChange}
+                        className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background"
+                      >
+                        <option value="">Selecione um módulo</option>
+                        {availableModules.map(module => (
+                          <option key={module.value} value={module.value}>
+                            {module.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+                
+                {/* PO Information */}
+                {formState.penModulo && formState.penPo && (
+                  <div className="mt-3 p-3 bg-primary/10 rounded-md">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">PO:</span>
+                        <span className="ml-2 font-medium">{formState.penPo}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">PO Substituto:</span>
+                        <span className="ml-2 font-medium">{formState.penPoSubstituto}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
             <div>
               <label htmlFor="acompanhamento" className="block text-sm font-medium mb-1">
                 Acompanhamento*
@@ -275,7 +417,7 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
                     <button
                       type="button"
                       onClick={() => handleRemoveLink(index)}
-                      className="ml-2 text-red-500 hover:text-red-700"
+                      className="ml-2 text-destructive hover:text-destructive/80"
                     >
                       <Trash size={16} />
                     </button>
