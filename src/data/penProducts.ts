@@ -1,10 +1,12 @@
-// Estrutura de dados dos produtos PEN com seus módulos e POs
+// Estrutura de dados dos produtos PEN com seus módulos, POs e Representantes Técnicos
+// Baseado na planilha oficial de produtos PEN
 
 export interface PenModule {
   value: string;
   label: string;
   po: string;
   poSubstituto: string;
+  representanteTecnico: string;
 }
 
 export interface PenProduct {
@@ -18,50 +20,47 @@ export const PEN_PRODUCTS: PenProduct[] = [
     value: 'sei',
     label: 'SEI!',
     modules: [
-      { value: 'mod_gestao_documental', label: 'Módulo Gestão Documental SEI', po: 'Marco Braga', poSubstituto: 'Duane' },
-      { value: 'mod_resposta', label: 'Módulo de Resposta', po: 'Duane', poSubstituto: 'Carol' },
-      { value: 'mod_estatistico', label: 'Módulo Estatístico', po: 'Vinícius', poSubstituto: 'Yuri' },
-      { value: 'mod_incom', label: 'Módulo INCom', po: 'M', poSubstituto: 'Cadu' },
-      { value: 'mod_assinatura', label: 'Módulo Assinatura Eletrônica', po: 'Vinícius', poSubstituto: 'Duane' },
-      { value: 'mod_acesso_govbr', label: 'Módulo Acesso GOV.BR', po: 'Carol', poSubstituto: 'Duane' },
+      { value: 'super_sei', label: 'Super SEI', po: 'Pedro/Duane', poSubstituto: 'Carol', representanteTecnico: 'Cadu' },
+      { value: 'mod_gestao_documental', label: 'Módulo Gestão Documental', po: 'Marco Braga', poSubstituto: 'Duane', representanteTecnico: '-' },
+      { value: 'mod_resposta', label: 'Módulo de Resposta', po: 'Duane', poSubstituto: 'Carol', representanteTecnico: 'Higo' },
+      { value: 'mod_estatistico', label: 'Módulo Estatístico', po: 'Vinícius', poSubstituto: 'Yuri', representanteTecnico: '-' },
+      { value: 'mod_incom', label: 'Módulo INCom', po: 'Marco', poSubstituto: '-', representanteTecnico: 'Cadu' },
+      { value: 'mod_assinatura', label: 'Módulo Assinatura Eletrônica', po: 'Vinícius', poSubstituto: 'Duane', representanteTecnico: 'Cadu' },
+      { value: 'mod_acesso_govbr', label: 'Módulo Acesso GOV.BR', po: 'Carol', poSubstituto: 'Duane', representanteTecnico: 'Cadu' },
+      { value: 'mod_wssei', label: 'Módulo WSSEI', po: 'Higo', poSubstituto: 'Cadu', representanteTecnico: 'Linhares' },
     ]
   },
   {
     value: 'tramita_gov',
-    label: 'Tramita GOV',
+    label: 'Tramita GOV.BR',
     modules: [
-      { value: 'integracao_tramita', label: 'Integração ao Tramita GOV', po: 'Duane', poSubstituto: 'Carol' },
+      { value: 'tramita_modulo', label: 'Módulo', po: 'Vinícius', poSubstituto: 'Yuri', representanteTecnico: 'Cadu' },
+      { value: 'tramita_api', label: 'API', po: 'Vinícius', poSubstituto: 'Yuri', representanteTecnico: 'Allysson' },
+      { value: 'tramita_portal', label: 'Portal', po: 'Vinícius', poSubstituto: 'Cristiana', representanteTecnico: 'Allysson' },
     ]
   },
   {
     value: 'protocolo_govbr',
-    label: 'protocolo.gov.br',
+    label: 'Protocolo GOV.BR',
     modules: [
-      { value: 'protocolo_modulo', label: 'Módulo', po: 'Duane', poSubstituto: 'Carol' },
-      { value: 'protocolo_api', label: 'API', po: 'Duane', poSubstituto: 'Carol' },
-      { value: 'protocolo_portal', label: 'Portal', po: 'Duane', poSubstituto: 'Carol' },
+      { value: 'protocolo_govbr_principal', label: 'Protocolo GOV.BR', po: 'Duane', poSubstituto: 'Carol', representanteTecnico: 'Cadu' },
     ]
   },
   {
     value: 'nup',
     label: 'NUP',
     modules: [
-      { value: 'nup_principal', label: 'NUP', po: 'Marco Braga', poSubstituto: 'Duane' },
-      { value: 'nipe', label: 'NIPE', po: 'Duane', poSubstituto: 'Duane' },
+      { value: 'nup_principal', label: 'NUP', po: 'Marco Braga', poSubstituto: 'Duane', representanteTecnico: 'Allysson' },
+      { value: 'nipe', label: 'NIPE', po: 'Marco Braga', poSubstituto: 'Duane', representanteTecnico: 'Allysson' },
     ]
   },
   {
     value: 'protocolo_integrado',
     label: 'Protocolo Integrado',
     modules: [
-      { value: 'protocolo_integrado_modulo', label: 'Protocolo Integrado', po: 'Duane', poSubstituto: 'Carol' },
-    ]
-  },
-  {
-    value: 'wssei',
-    label: 'Módulo REST WSSEI',
-    modules: [
-      { value: 'mod_wssei', label: 'Módulo WSSEI', po: 'Higo', poSubstituto: 'Cadu' },
+      { value: 'protocolo_integrado_modulo', label: 'Módulo', po: 'Duane', poSubstituto: 'Carol', representanteTecnico: 'Allysson' },
+      { value: 'protocolo_integrado_api', label: 'API', po: 'Duane', poSubstituto: 'Carol', representanteTecnico: 'Allysson' },
+      { value: 'protocolo_integrado_portal', label: 'Portal', po: 'Duane', poSubstituto: 'Carol', representanteTecnico: 'Allysson' },
     ]
   },
 ];
