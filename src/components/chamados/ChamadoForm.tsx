@@ -17,6 +17,7 @@ interface ChamadoFormState {
   penModulo?: string;
   penPo?: string;
   penPoSubstituto?: string;
+  penRepresentanteTecnico?: string;
 }
 
 interface ChamadoFormProps {
@@ -75,7 +76,8 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
       penProduto: '',
       penModulo: '',
       penPo: '',
-      penPoSubstituto: ''
+      penPoSubstituto: '',
+      penRepresentanteTecnico: ''
     } : {
       titulo: '',
       status: 'em_andamento',
@@ -87,7 +89,8 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
       penProduto: '',
       penModulo: '',
       penPo: '',
-      penPoSubstituto: ''
+      penPoSubstituto: '',
+      penRepresentanteTecnico: ''
     };
   });
   
@@ -121,7 +124,8 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
           penProduto: '',
           penModulo: '',
           penPo: '',
-          penPoSubstituto: ''
+          penPoSubstituto: '',
+          penRepresentanteTecnico: ''
         }));
       } else {
         setFormState(prev => ({ 
@@ -139,7 +143,8 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
         penProduto: value,
         penModulo: '',
         penPo: '',
-        penPoSubstituto: ''
+        penPoSubstituto: '',
+        penRepresentanteTecnico: ''
       }));
       return;
     }
@@ -151,7 +156,8 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
         ...prev, 
         penModulo: value,
         penPo: module?.po || '',
-        penPoSubstituto: module?.poSubstituto || ''
+        penPoSubstituto: module?.poSubstituto || '',
+        penRepresentanteTecnico: module?.representanteTecnico || ''
       }));
       return;
     }
@@ -350,17 +356,21 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
                   )}
                 </div>
                 
-                {/* PO Information */}
+                {/* PO and Representative Information */}
                 {formState.penModulo && formState.penPo && (
                   <div className="mt-3 p-3 bg-primary/10 rounded-md">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                       <div>
                         <span className="text-muted-foreground">PO:</span>
                         <span className="ml-2 font-medium">{formState.penPo}</span>
                       </div>
                       <div>
                         <span className="text-muted-foreground">PO Substituto:</span>
-                        <span className="ml-2 font-medium">{formState.penPoSubstituto}</span>
+                        <span className="ml-2 font-medium">{formState.penPoSubstituto || '-'}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Rep. Técnico:</span>
+                        <span className="ml-2 font-medium">{formState.penRepresentanteTecnico || '-'}</span>
                       </div>
                     </div>
                   </div>
