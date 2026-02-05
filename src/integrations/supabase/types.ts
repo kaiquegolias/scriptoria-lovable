@@ -184,6 +184,7 @@ export type Database = {
       chamados: {
         Row: {
           acompanhamento: string
+          assunto: string | null
           classificacao: string | null
           data_atualizacao: string
           data_criacao: string
@@ -203,6 +204,7 @@ export type Database = {
         }
         Insert: {
           acompanhamento: string
+          assunto?: string | null
           classificacao?: string | null
           data_atualizacao?: string
           data_criacao?: string
@@ -222,6 +224,7 @@ export type Database = {
         }
         Update: {
           acompanhamento?: string
+          assunto?: string | null
           classificacao?: string | null
           data_atualizacao?: string
           data_criacao?: string
