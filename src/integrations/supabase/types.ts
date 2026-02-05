@@ -192,6 +192,11 @@ export type Database = {
           id: string
           links: string[] | null
           nivel: string
+          pen_modulo: string | null
+          pen_po: string | null
+          pen_po_substituto: string | null
+          pen_produto: string | null
+          pen_representante_tecnico: string | null
           status: string
           titulo: string
           user_id: string
@@ -206,6 +211,11 @@ export type Database = {
           id?: string
           links?: string[] | null
           nivel: string
+          pen_modulo?: string | null
+          pen_po?: string | null
+          pen_po_substituto?: string | null
+          pen_produto?: string | null
+          pen_representante_tecnico?: string | null
           status: string
           titulo: string
           user_id: string
@@ -220,6 +230,11 @@ export type Database = {
           id?: string
           links?: string[] | null
           nivel?: string
+          pen_modulo?: string | null
+          pen_po?: string | null
+          pen_po_substituto?: string | null
+          pen_produto?: string | null
+          pen_representante_tecnico?: string | null
           status?: string
           titulo?: string
           user_id?: string

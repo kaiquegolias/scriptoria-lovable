@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { Chamado } from './ChamadoCard';
-import { PEN_PRODUCTS, getProductByValue, getModuleByValue } from '@/data/penProducts';
+import { PEN_PRODUCTS, getProductByValue, getModuleByValue, getProductByLabel } from '@/data/penProducts';
 
 interface ChamadoFormState {
   id?: string;
@@ -64,21 +64,44 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
     }
     
     // Default state or editing state
-    return chamado ? {
-      id: chamado.id,
-      titulo: chamado.titulo,
-      status: chamado.status,
-      estruturante: chamado.estruturante,
-      nivel: chamado.nivel,
-      acompanhamento: chamado.acompanhamento,
-      links: chamado.links || [],
-      dataLimite: chamado.dataLimite,
-      penProduto: '',
-      penModulo: '',
-      penPo: '',
-      penPoSubstituto: '',
-      penRepresentanteTecnico: ''
-    } : {
+    if (chamado) {
+      // Find product value from saved label for editing
+      let penProdutoValue = '';
+      let penModuloValue = '';
+      
+      if (chamado.penProduto) {
+        // Find product by label (what was saved in DB)
+        const productMatch = PEN_PRODUCTS.find(p => p.label === chamado.penProduto);
+        if (productMatch) {
+          penProdutoValue = productMatch.value;
+          // Find module by label within that product
+          if (chamado.penModulo) {
+            const moduleMatch = productMatch.modules.find(m => m.label === chamado.penModulo);
+            if (moduleMatch) {
+              penModuloValue = moduleMatch.value;
+            }
+          }
+        }
+      }
+      
+      return {
+        id: chamado.id,
+        titulo: chamado.titulo,
+        status: chamado.status,
+        estruturante: chamado.estruturante,
+        nivel: chamado.nivel,
+        acompanhamento: chamado.acompanhamento,
+        links: chamado.links || [],
+        dataLimite: chamado.dataLimite,
+        penProduto: penProdutoValue,
+        penModulo: penModuloValue,
+        penPo: chamado.penPo || '',
+        penPoSubstituto: chamado.penPoSubstituto || '',
+        penRepresentanteTecnico: chamado.penRepresentanteTecnico || ''
+      };
+    }
+    
+    return {
       titulo: '',
       status: 'em_andamento',
       estruturante: 'PNCP',
@@ -195,7 +218,30 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
       return;
     }
     
-    onSave(formState);
+    // Convert PEN product/module values to labels for storage
+    let penProdutoLabel = '';
+    let penModuloLabel = '';
+    
+    if (formState.penProduto) {
+      const product = getProductByValue(formState.penProduto);
+      if (product) {
+        penProdutoLabel = product.label;
+        if (formState.penModulo) {
+          const module = product.modules.find(m => m.value === formState.penModulo);
+          if (module) {
+            penModuloLabel = module.label;
+          }
+        }
+      }
+    }
+    
+    const dataToSave = {
+      ...formState,
+      penProduto: penProdutoLabel,
+      penModulo: penModuloLabel
+    };
+    
+    onSave(dataToSave);
     cleanup();
   };
   

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, ExternalLink, CheckCircle, AlertCircle, Calendar, RefreshCw, Trash2, MessageCircle } from 'lucide-react';
+import { Edit, ExternalLink, CheckCircle, AlertCircle, Calendar, RefreshCw, Trash2, MessageCircle, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, addHours, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -18,6 +18,11 @@ export interface Chamado {
   dataCriacao: string;
   dataAtualizacao: string;
   dataLimite?: string;
+  penProduto?: string;
+  penModulo?: string;
+  penPo?: string;
+  penPoSubstituto?: string;
+  penRepresentanteTecnico?: string;
 }
 
 interface ChamadoCardProps {
@@ -225,6 +230,42 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({
           {getStatusText(chamado.status)}
         </span>
       </div>
+
+      {/* PEN Product Details */}
+      {chamado.estruturante === 'PEN' && chamado.penProduto && (
+        <div className="mb-4 p-3 bg-estruturante-pen/10 rounded-lg border border-estruturante-pen/20">
+          <div className="flex items-center gap-2 mb-2">
+            <User size={14} className="text-estruturante-pen" />
+            <h4 className="text-xs font-medium uppercase text-estruturante-pen">
+              Detalhes PEN
+            </h4>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <span className="text-muted-foreground">Produto:</span>
+              <span className="ml-1 font-medium">{chamado.penProduto}</span>
+            </div>
+            {chamado.penModulo && (
+              <div>
+                <span className="text-muted-foreground">Módulo:</span>
+                <span className="ml-1 font-medium">{chamado.penModulo}</span>
+              </div>
+            )}
+            {chamado.penPo && (
+              <div>
+                <span className="text-muted-foreground">PO:</span>
+                <span className="ml-1 font-medium">{chamado.penPo}</span>
+              </div>
+            )}
+            {chamado.penRepresentanteTecnico && chamado.penRepresentanteTecnico !== '-' && (
+              <div>
+                <span className="text-muted-foreground">Rep. Técnico:</span>
+                <span className="ml-1 font-medium">{chamado.penRepresentanteTecnico}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       
       <div className="mb-4">
         <h4 className="text-xs font-medium uppercase text-foreground/60 mb-1">
