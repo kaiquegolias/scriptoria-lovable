@@ -18,6 +18,7 @@ export interface Chamado {
   dataCriacao: string;
   dataAtualizacao: string;
   dataLimite?: string;
+  assunto?: string;
   penProduto?: string;
   penModulo?: string;
   penPo?: string;
@@ -229,6 +230,11 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({
         <span className={`text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100`}>
           {getStatusText(chamado.status)}
         </span>
+        {chamado.assunto && (
+          <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-indigo-100 text-indigo-700">
+            {chamado.assunto}
+          </span>
+        )}
       </div>
 
       {/* PEN Product Details */}

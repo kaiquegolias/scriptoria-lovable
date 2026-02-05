@@ -13,12 +13,21 @@ interface ChamadoFormState {
   acompanhamento: string;
   links: string[];
   dataLimite: string | null;
+  assunto?: string;
   penProduto?: string;
   penModulo?: string;
   penPo?: string;
   penPoSubstituto?: string;
   penRepresentanteTecnico?: string;
 }
+
+const ASSUNTO_OPTIONS = [
+  { value: 'registrar_duvida', label: 'Registrar dúvida' },
+  { value: 'registrar_problema_tecnico', label: 'Registrar problema técnico' },
+  { value: 'registrar_melhoria', label: 'Registrar melhoria' },
+  { value: 'registrar_reclamacao', label: 'Registrar reclamação' },
+  { value: 'solicitar_reuniao', label: 'Solicitar reunião com a equipe do PEN' }
+];
 
 interface ChamadoFormProps {
   onSave: (chamado: ChamadoFormState) => void;
@@ -84,6 +93,13 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
         }
       }
       
+      // Find assunto value from label if needed
+      let assuntoValue = '';
+      if (chamado.assunto) {
+        const assuntoMatch = ASSUNTO_OPTIONS.find(a => a.label === chamado.assunto);
+        assuntoValue = assuntoMatch?.value || '';
+      }
+      
       return {
         id: chamado.id,
         titulo: chamado.titulo,
@@ -93,6 +109,7 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
         acompanhamento: chamado.acompanhamento,
         links: chamado.links || [],
         dataLimite: chamado.dataLimite,
+        assunto: assuntoValue,
         penProduto: penProdutoValue,
         penModulo: penModuloValue,
         penPo: chamado.penPo || '',
@@ -109,6 +126,7 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
       acompanhamento: '',
       links: [],
       dataLimite: null,
+      assunto: '',
       penProduto: '',
       penModulo: '',
       penPo: '',
@@ -235,8 +253,16 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
       }
     }
     
+    // Convert assunto value to label for storage
+    let assuntoLabel = '';
+    if (formState.assunto) {
+      const assuntoMatch = ASSUNTO_OPTIONS.find(a => a.value === formState.assunto);
+      assuntoLabel = assuntoMatch?.label || '';
+    }
+    
     const dataToSave = {
       ...formState,
+      assunto: assuntoLabel,
       penProduto: penProdutoLabel,
       penModulo: penModuloLabel
     };
@@ -348,6 +374,27 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
                   ))}
                 </select>
               </div>
+            </div>
+            
+            {/* Campo Assunto */}
+            <div>
+              <label htmlFor="assunto" className="block text-sm font-medium mb-1">
+                Assunto
+              </label>
+              <select
+                id="assunto"
+                name="assunto"
+                value={formState.assunto || ''}
+                onChange={handleChange}
+                className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Selecione o assunto</option>
+                {ASSUNTO_OPTIONS.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
             
             {/* PEN Product and Module Selection */}

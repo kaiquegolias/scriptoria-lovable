@@ -205,7 +205,7 @@ const ChamadoModal: React.FC<ChamadoModalProps> = ({
           </div>
 
           <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
               <div>
                 <h3 className="text-sm font-semibold text-gray-500 mb-1">Estruturante</h3>
                 <p className="text-lg">{chamado.estruturante}</p>
@@ -214,6 +214,14 @@ const ChamadoModal: React.FC<ChamadoModalProps> = ({
                 <h3 className="text-sm font-semibold text-gray-500 mb-1">Nível</h3>
                 <p className="text-lg">{chamado.nivel}</p>
               </div>
+              {chamado.assunto && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-500 mb-1">Assunto</h3>
+                  <span className="px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 font-medium text-sm">
+                    {chamado.assunto}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* PEN Product Details Section */}
