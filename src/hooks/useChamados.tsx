@@ -42,7 +42,12 @@ export function useChamados(encerrados = false) {
           links: item.links || [],
           dataCriacao: item.data_criacao,
           dataAtualizacao: item.data_atualizacao,
-          dataLimite: item.data_limite
+          dataLimite: item.data_limite,
+          penProduto: item.pen_produto || undefined,
+          penModulo: item.pen_modulo || undefined,
+          penPo: item.pen_po || undefined,
+          penPoSubstituto: item.pen_po_substituto || undefined,
+          penRepresentanteTecnico: item.pen_representante_tecnico || undefined
         }));
         
         // Filter based on encerrados param
@@ -84,7 +89,12 @@ export function useChamados(encerrados = false) {
             nivel: chamadoData.nivel,
             acompanhamento: chamadoData.acompanhamento,
             links: chamadoData.links,
-            data_limite: dataLimite || chamadoData.dataLimite
+            data_limite: dataLimite || chamadoData.dataLimite,
+            pen_produto: chamadoData.penProduto || null,
+            pen_modulo: chamadoData.penModulo || null,
+            pen_po: chamadoData.penPo || null,
+            pen_po_substituto: chamadoData.penPoSubstituto || null,
+            pen_representante_tecnico: chamadoData.penRepresentanteTecnico || null
           }
         ])
         .select('*')
@@ -105,7 +115,12 @@ export function useChamados(encerrados = false) {
           links: data.links || [],
           dataCriacao: data.data_criacao,
           dataAtualizacao: data.data_atualizacao,
-          dataLimite: data.data_limite
+          dataLimite: data.data_limite,
+          penProduto: data.pen_produto || undefined,
+          penModulo: data.pen_modulo || undefined,
+          penPo: data.pen_po || undefined,
+          penPoSubstituto: data.pen_po_substituto || undefined,
+          penRepresentanteTecnico: data.pen_representante_tecnico || undefined
         };
 
         if (!encerrados && newChamado.status !== 'resolvido') {
@@ -156,7 +171,12 @@ export function useChamados(encerrados = false) {
           acompanhamento: chamadoData.acompanhamento,
           links: chamadoData.links,
           data_atualizacao: new Date().toISOString(),
-          data_limite: dataLimite
+          data_limite: dataLimite,
+          pen_produto: chamadoData.penProduto || null,
+          pen_modulo: chamadoData.penModulo || null,
+          pen_po: chamadoData.penPo || null,
+          pen_po_substituto: chamadoData.penPoSubstituto || null,
+          pen_representante_tecnico: chamadoData.penRepresentanteTecnico || null
         })
         .eq('id', id)
         .select('*')
@@ -177,7 +197,12 @@ export function useChamados(encerrados = false) {
           links: data.links || [],
           dataCriacao: data.data_criacao,
           dataAtualizacao: data.data_atualizacao,
-          dataLimite: data.data_limite
+          dataLimite: data.data_limite,
+          penProduto: data.pen_produto || undefined,
+          penModulo: data.pen_modulo || undefined,
+          penPo: data.pen_po || undefined,
+          penPoSubstituto: data.pen_po_substituto || undefined,
+          penRepresentanteTecnico: data.pen_representante_tecnico || undefined
         };
 
         // Update in state if still visible in this list
@@ -232,7 +257,12 @@ export function useChamados(encerrados = false) {
           links: data.links || [],
           dataCriacao: data.data_criacao,
           dataAtualizacao: data.data_atualizacao,
-          dataLimite: null
+          dataLimite: null,
+          penProduto: data.pen_produto || undefined,
+          penModulo: data.pen_modulo || undefined,
+          penPo: data.pen_po || undefined,
+          penPoSubstituto: data.pen_po_substituto || undefined,
+          penRepresentanteTecnico: data.pen_representante_tecnico || undefined
         };
 
         // If not viewing encerrados, remove from list
@@ -330,7 +360,12 @@ export function useChamados(encerrados = false) {
           links: data.links || [],
           dataCriacao: data.data_criacao,
           dataAtualizacao: data.data_atualizacao,
-          dataLimite: data.data_limite
+          dataLimite: data.data_limite,
+          penProduto: data.pen_produto || undefined,
+          penModulo: data.pen_modulo || undefined,
+          penPo: data.pen_po || undefined,
+          penPoSubstituto: data.pen_po_substituto || undefined,
+          penRepresentanteTecnico: data.pen_representante_tecnico || undefined
         };
 
         // If viewing encerrados, remove from list

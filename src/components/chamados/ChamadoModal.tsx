@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Chamado } from './ChamadoCard';
-import { X, Edit, CheckCircle, RefreshCw, ExternalLink, Calendar, AlertCircle, Trash2 } from 'lucide-react';
+import { X, Edit, CheckCircle, RefreshCw, ExternalLink, Calendar, AlertCircle, Trash2, User } from 'lucide-react';
 import { format, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -215,6 +215,46 @@ const ChamadoModal: React.FC<ChamadoModalProps> = ({
                 <p className="text-lg">{chamado.nivel}</p>
               </div>
             </div>
+
+            {/* PEN Product Details Section */}
+            {chamado.estruturante === 'PEN' && chamado.penProduto && (
+              <div className="mb-6 p-4 bg-estruturante-pen/10 rounded-lg border border-estruturante-pen/20">
+                <div className="flex items-center gap-2 mb-3">
+                  <User size={18} className="text-estruturante-pen" />
+                  <h3 className="text-sm font-semibold text-estruturante-pen">Detalhes do Produto PEN</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div>
+                    <span className="text-xs font-medium text-muted-foreground block mb-1">Produto</span>
+                    <span className="font-medium">{chamado.penProduto}</span>
+                  </div>
+                  {chamado.penModulo && (
+                    <div>
+                      <span className="text-xs font-medium text-muted-foreground block mb-1">Módulo</span>
+                      <span className="font-medium">{chamado.penModulo}</span>
+                    </div>
+                  )}
+                  {chamado.penPo && (
+                    <div>
+                      <span className="text-xs font-medium text-muted-foreground block mb-1">PO</span>
+                      <span className="font-medium">{chamado.penPo}</span>
+                    </div>
+                  )}
+                  {chamado.penPoSubstituto && chamado.penPoSubstituto !== '-' && (
+                    <div>
+                      <span className="text-xs font-medium text-muted-foreground block mb-1">PO Substituto</span>
+                      <span className="font-medium">{chamado.penPoSubstituto}</span>
+                    </div>
+                  )}
+                  {chamado.penRepresentanteTecnico && chamado.penRepresentanteTecnico !== '-' && (
+                    <div>
+                      <span className="text-xs font-medium text-muted-foreground block mb-1">Rep. Técnico</span>
+                      <span className="font-medium">{chamado.penRepresentanteTecnico}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="mb-6">
               <h3 className="text-sm font-semibold text-gray-500 mb-2">Acompanhamento</h3>

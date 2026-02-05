@@ -69,7 +69,23 @@ export const getProductByValue = (value: string): PenProduct | undefined => {
   return PEN_PRODUCTS.find(p => p.value === value);
 };
 
+export const getProductByLabel = (label: string): PenProduct | undefined => {
+  return PEN_PRODUCTS.find(p => p.label === label);
+};
+
 export const getModuleByValue = (productValue: string, moduleValue: string): PenModule | undefined => {
   const product = getProductByValue(productValue);
   return product?.modules.find(m => m.value === moduleValue);
+};
+
+export const getModuleByLabel = (productValue: string, moduleLabel: string): PenModule | undefined => {
+  const product = getProductByValue(productValue);
+  return product?.modules.find(m => m.label === moduleLabel);
+};
+
+export const findProductAndModuleByLabels = (productLabel: string, moduleLabel: string): { product?: PenProduct, module?: PenModule } => {
+  const product = getProductByLabel(productLabel);
+  if (!product) return {};
+  const module = product.modules.find(m => m.label === moduleLabel);
+  return { product, module };
 };
