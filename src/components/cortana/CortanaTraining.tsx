@@ -1,5 +1,5 @@
 import React from 'react';
-import { Brain, Database, FileText, CheckCircle2, Loader2, BarChart3 } from 'lucide-react';
+import { Brain, Database, FileText, CheckCircle2, Loader2, BarChart3, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -13,6 +13,7 @@ interface KBStats {
   totalScripts: number;
   totalTickets: number;
   totalKBDocs: number;
+  totalModelos: number;
   indexedScripts: number;
   indexedTickets: number;
   lastIndexed: string | null;
@@ -24,6 +25,7 @@ const CortanaTraining: React.FC = () => {
     totalScripts: 0,
     totalTickets: 0,
     totalKBDocs: 0,
+    totalModelos: 0,
     indexedScripts: 0,
     indexedTickets: 0,
     lastIndexed: null,
@@ -37,6 +39,7 @@ const CortanaTraining: React.FC = () => {
         { count: totalScripts },
         { count: totalTickets },
         { count: totalKBDocs },
+        { count: totalModelos },
         { count: indexedScripts },
         { count: indexedTickets },
         { data: lastEntry },
@@ -44,6 +47,7 @@ const CortanaTraining: React.FC = () => {
         supabase.from('scripts_library').select('*', { count: 'exact', head: true }),
         supabase.from('chamados').select('*', { count: 'exact', head: true }).eq('status', 'resolvido'),
         supabase.from('kb_documents').select('*', { count: 'exact', head: true }),
+        supabase.from('scripts').select('*', { count: 'exact', head: true }),
         supabase.from('kb_vectors').select('*', { count: 'exact', head: true }).eq('source_type', 'script'),
         supabase.from('kb_vectors').select('*', { count: 'exact', head: true }).eq('source_type', 'ticket'),
         supabase.from('kb_vectors').select('updated_at').order('updated_at', { ascending: false }).limit(1),
@@ -53,6 +57,7 @@ const CortanaTraining: React.FC = () => {
         totalScripts: totalScripts || 0,
         totalTickets: totalTickets || 0,
         totalKBDocs: totalKBDocs || 0,
+        totalModelos: totalModelos || 0,
         indexedScripts: indexedScripts || 0,
         indexedTickets: indexedTickets || 0,
         lastIndexed: lastEntry?.[0]?.updated_at || null,
@@ -91,27 +96,36 @@ const CortanaTraining: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Stats overview */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <TrainingStatCard
           icon={<FileText className="h-5 w-5" />}
           label="Scripts na Biblioteca"
           total={stats.totalScripts}
           indexed={stats.indexedScripts}
           loading={statsLoading}
         />
-        <StatCard
+        <TrainingStatCard
           icon={<Database className="h-5 w-5" />}
           label="Chamados Resolvidos"
           total={stats.totalTickets}
           indexed={stats.indexedTickets}
           loading={statsLoading}
         />
-        <StatCard
+        <TrainingStatCard
           icon={<BarChart3 className="h-5 w-5" />}
           label="Documentos KB"
           total={stats.totalKBDocs}
           indexed={stats.totalKBDocs}
           loading={statsLoading}
+          alwaysSynced
+        />
+        <TrainingStatCard
+          icon={<BookOpen className="h-5 w-5" />}
+          label="Modelos de Resposta"
+          total={stats.totalModelos}
+          indexed={stats.totalModelos}
+          loading={statsLoading}
+          alwaysSynced
         />
       </div>
 
@@ -197,6 +211,10 @@ const CortanaTraining: React.FC = () => {
             </div>
             <div className="flex items-start gap-3">
               <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+              <p><strong>Documentos KB e Modelos:</strong> Documentos da base de conhecimento e modelos de resposta são consultados diretamente pela IA — não precisam de indexação.</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
               <p><strong>Aprendizado Contínuo:</strong> Sempre que novos scripts forem criados ou chamados forem resolvidos, treine a Cortana novamente para manter a base atualizada.</p>
             </div>
           </div>
@@ -206,13 +224,14 @@ const CortanaTraining: React.FC = () => {
   );
 };
 
-const StatCard: React.FC<{
+const TrainingStatCard: React.FC<{
   icon: React.ReactNode;
   label: string;
   total: number;
   indexed: number;
   loading: boolean;
-}> = ({ icon, label, total, indexed, loading }) => {
+  alwaysSynced?: boolean;
+}> = ({ icon, label, total, indexed, loading, alwaysSynced }) => {
   const coverage = total > 0 ? Math.round((indexed / total) * 100) : 0;
 
   return (
@@ -223,12 +242,23 @@ const StatCard: React.FC<{
             {icon}
             <span className="text-xs font-medium">{label}</span>
           </div>
-          <Badge variant={coverage >= 80 ? 'default' : coverage >= 40 ? 'secondary' : 'destructive'} className="text-xs">
-            {loading ? '...' : `${coverage}%`}
-          </Badge>
+          {alwaysSynced ? (
+            <Badge variant="outline" className="text-xs">
+              {loading ? '...' : 'Auto'}
+            </Badge>
+          ) : (
+            <Badge variant={coverage >= 80 ? 'default' : coverage >= 40 ? 'secondary' : 'destructive'} className="text-xs">
+              {loading ? '...' : `${coverage}%`}
+            </Badge>
+          )}
         </div>
-        <div className="text-2xl font-bold">{loading ? '...' : indexed}<span className="text-sm text-muted-foreground font-normal">/{total}</span></div>
-        <Progress value={coverage} className="h-1.5 mt-2" />
+        <div className="text-2xl font-bold">
+          {loading ? '...' : total}
+          {!alwaysSynced && (
+            <span className="text-sm text-muted-foreground font-normal"> ({indexed} indexados)</span>
+          )}
+        </div>
+        {!alwaysSynced && <Progress value={coverage} className="h-1.5 mt-2" />}
       </CardContent>
     </Card>
   );
