@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FileText, LogOut, LogIn, Menu, X, UserCircle2, User, FileOutput, Eye } from 'lucide-react';
+import { FileText, LogOut, LogIn, Menu, X, UserCircle2, User, FileOutput, Eye, Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import ThemeToggle from './ThemeToggle';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -63,6 +63,10 @@ const Navbar = () => {
               </Link>
               <Link to="/biblioteca" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/biblioteca' ? 'text-foreground' : 'text-foreground/60'}`}>
                 Biblioteca
+              </Link>
+              <Link to="/cortana" className={`text-sm font-medium transition-colors hover:text-primary flex items-center gap-1 ${location.pathname === '/cortana' ? 'text-foreground' : 'text-foreground/60'}`}>
+                <Sparkles className="h-3.5 w-3.5" />
+                Cortana
               </Link>
             </nav>
           )}
@@ -156,6 +160,10 @@ const Navbar = () => {
               </Link>
               <Link to="/biblioteca" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/biblioteca' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
                 Biblioteca
+              </Link>
+              <Link to="/cortana" className={`flex items-center gap-2 py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/cortana' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
+                <Sparkles className="h-4 w-4" />
+                Cortana
               </Link>
               <Link to="/profile" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/profile' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
                 Meu Perfil

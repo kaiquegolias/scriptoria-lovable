@@ -14,6 +14,7 @@ import GeradorScripts from '@/pages/GeradorScripts';
 import ScriptsModelos from '@/pages/ScriptsModelos';
 import Supervisor from '@/pages/Supervisor';
 import Biblioteca from '@/pages/Biblioteca';
+import Cortana from '@/pages/Cortana';
 
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
@@ -37,6 +38,7 @@ function App() {
               <Route path="/scripts-modelos" element={<ScriptsModelos />} />
               <Route path="/supervisor" element={<Supervisor />} />
               <Route path="/biblioteca" element={<Biblioteca />} />
+              <Route path="/cortana" element={<Cortana />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
