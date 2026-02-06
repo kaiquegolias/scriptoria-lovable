@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.crawl-urls]
 verify_jwt = false
+
+[functions.cortana-chat]
+verify_jwt = false
