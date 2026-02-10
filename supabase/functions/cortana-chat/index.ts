@@ -86,15 +86,44 @@ serve(async (req) => {
       `[RESOLVIDO] ${t.titulo} | ${t.pen_produto || 'N/A'}\n${truncate(t.acompanhamento, 200)}\nSolução: ${followupsMap[t.id] || 'N/R'}`
     ).join("\n---\n");
 
-    // 4. KB documents - limit 15, truncated
+    // 4. KB documents - limit 15, truncated + fetch Google Sheets content
     const { data: kbDocs } = await supabase
       .from("kb_documents")
-      .select("title, content, category, keywords")
+      .select("title, content, category, keywords, source")
       .limit(15);
 
-    const kbContext = (kbDocs || []).map(doc =>
-      `[KB] ${doc.title} | ${doc.category || 'Geral'}\n${truncate(doc.content, 500)}`
-    ).join("\n===\n");
+    // Helper: fetch Google Sheets as CSV
+    async function fetchSheetCSV(url: string): Promise<string | null> {
+      try {
+        const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+        if (!match) return null;
+        const sheetId = match[1];
+        const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+        const resp = await fetch(csvUrl, { redirect: 'follow' });
+        if (!resp.ok) return null;
+        const csv = await resp.text();
+        return truncate(csv, 3000);
+      } catch {
+        return null;
+      }
+    }
+
+    const kbContextParts: string[] = [];
+    for (const doc of (kbDocs || [])) {
+      const isSheet = (doc.content || '').includes('docs.google.com/spreadsheets') ||
+                      (doc.source || '').includes('docs.google.com/spreadsheets');
+      const sheetUrl = isSheet ? (doc.content.match(/https:\/\/docs\.google\.com\/spreadsheets\/[^\s)]+/)?.[0] || doc.source) : null;
+
+      if (sheetUrl) {
+        const csv = await fetchSheetCSV(sheetUrl);
+        if (csv) {
+          kbContextParts.push(`[KB:PLANILHA] ${doc.title} | ${doc.category || 'Geral'}\n${csv}`);
+          continue;
+        }
+      }
+      kbContextParts.push(`[KB] ${doc.title} | ${doc.category || 'Geral'}\n${truncate(doc.content, 500)}`);
+    }
+    const kbContext = kbContextParts.join("\n===\n");
 
     // 5. KB vectors - limit 30, truncated
     const { data: kbVectors } = await supabase
