@@ -35,35 +35,41 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // ── Fetch all knowledge sources ──
+    // Helper to truncate text
+    const truncate = (text: string, maxLen: number) =>
+      text && text.length > maxLen ? text.slice(0, maxLen) + '...' : (text || '');
 
-    // 1. User's response models (scripts)
+    // ── Fetch knowledge sources (limited for free-tier token budget) ──
+
+    // 1. User's response models (scripts) - limit 15
     const { data: scripts } = await supabase
       .from("scripts")
       .select("id, nome, situacao, modelo, estruturante, nivel")
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .limit(15);
 
     const modelosContext = (scripts || []).map(s =>
-      `[MODELO] ${s.nome} | Situação: ${s.situacao} | Nível: ${s.nivel} | Estruturante: ${s.estruturante}\nResposta-modelo: ${s.modelo}`
+      `[MODELO] ${s.nome} | ${s.situacao} | ${s.nivel}\n${truncate(s.modelo, 300)}`
     ).join("\n---\n");
 
-    // 2. Scripts library
+    // 2. Scripts library - limit 10
     const { data: libraryScripts } = await supabase
       .from("scripts_library")
-      .select("id, title, description, content, tags, sistema");
+      .select("id, title, description, content, tags, sistema")
+      .limit(10);
 
     const scriptsContext = (libraryScripts || []).map(s =>
-      `[SCRIPT] ${s.title} | Sistema: ${s.sistema || 'N/A'} | Tags: ${(s.tags || []).join(", ")}\n${s.description || ''}\n${s.content}`
+      `[SCRIPT] ${s.title} | ${s.sistema || 'N/A'}\n${truncate(s.content, 400)}`
     ).join("\n---\n");
 
-    // 3. Resolved tickets with solutions
+    // 3. Resolved tickets - limit 10
     const { data: closedTickets } = await supabase
       .from("chamados")
-      .select("id, titulo, acompanhamento, classificacao, estruturante, nivel, assunto, pen_produto, pen_modulo")
+      .select("id, titulo, acompanhamento, classificacao, pen_produto, pen_modulo")
       .eq("status", "resolvido")
       .eq("user_id", userId)
       .order("data_atualizacao", { ascending: false })
-      .limit(30);
+      .limit(10);
 
     const closedIds = (closedTickets || []).map(t => t.id);
     let followupsMap: Record<string, string> = {};
@@ -73,31 +79,31 @@ serve(async (req) => {
         .select("ticket_id, content")
         .in("ticket_id", closedIds)
         .eq("type", "ultimo_acompanhamento");
-      (followups || []).forEach(f => { followupsMap[f.ticket_id] = f.content || ''; });
+      (followups || []).forEach(f => { followupsMap[f.ticket_id] = truncate(f.content || '', 200); });
     }
 
     const ticketsContext = (closedTickets || []).map(t =>
-      `[CHAMADO_RESOLVIDO] ${t.titulo} | Classificação: ${t.classificacao || 'N/A'} | Produto PEN: ${t.pen_produto || 'N/A'} | Módulo: ${t.pen_modulo || 'N/A'}\nDescrição: ${t.acompanhamento}\nSolução: ${followupsMap[t.id] || 'Não registrada'}`
+      `[RESOLVIDO] ${t.titulo} | ${t.pen_produto || 'N/A'}\n${truncate(t.acompanhamento, 200)}\nSolução: ${followupsMap[t.id] || 'N/R'}`
     ).join("\n---\n");
 
-    // 4. KB documents
+    // 4. KB documents - limit 15, truncated
     const { data: kbDocs } = await supabase
       .from("kb_documents")
       .select("title, content, category, keywords")
-      .limit(50);
+      .limit(15);
 
     const kbContext = (kbDocs || []).map(doc =>
-      `[KB] ${doc.title} | Categoria: ${doc.category || 'Geral'} | Keywords: ${(doc.keywords || []).join(", ")}\n${doc.content}`
+      `[KB] ${doc.title} | ${doc.category || 'Geral'}\n${truncate(doc.content, 500)}`
     ).join("\n===\n");
 
-    // 5. KB vectors (indexed knowledge)
+    // 5. KB vectors - limit 30, truncated
     const { data: kbVectors } = await supabase
       .from("kb_vectors")
       .select("title, content_preview, source_type, keywords")
-      .limit(100);
+      .limit(30);
 
     const kbVectorsContext = (kbVectors || []).map(v =>
-      `[KB_INDEX:${v.source_type}] ${v.title} | Keywords: ${(v.keywords || []).join(", ")}\n${v.content_preview || ''}`
+      `[KB_INDEX:${v.source_type}] ${v.title}\n${truncate(v.content_preview || '', 200)}`
     ).join("\n---\n");
 
     // ── Build system prompt ──
