@@ -4,7 +4,8 @@ import ChamadoForm from './ChamadoForm';
 import ChamadoModal from './ChamadoModal';
 import CloseTicketModal from './CloseTicketModal';
 import { toast } from 'sonner';
-import { Plus, Search, Filter } from 'lucide-react';
+import { Plus, Search, Filter, Download } from 'lucide-react';
+import { exportChamadosCSV } from '@/utils/exportChamados';
 import { useAuth } from '@/context/AuthContext';
 import { useChamados } from '@/hooks/useChamados';
 
@@ -163,15 +164,26 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false, onFinishC
           />
         </div>
         
-        {!encerrados && (
-          <button
-            onClick={handleOpenForm}
-            className="px-4 py-2.5 rounded-lg bg-primary text-white flex items-center hover:bg-primary/90 transition-colors"
-          >
-            <Plus size={18} className="mr-2" />
-            Novo Chamado
-          </button>
-        )}
+        <div className="flex gap-2">
+          {chamadosFiltrados.length > 0 && (
+            <button
+              onClick={() => exportChamadosCSV(chamadosFiltrados, encerrados ? 'chamados_encerrados' : 'chamados')}
+              className="px-4 py-2.5 rounded-lg border border-border bg-card text-foreground flex items-center hover:bg-muted transition-colors"
+            >
+              <Download size={18} className="mr-2" />
+              Exportar CSV
+            </button>
+          )}
+          {!encerrados && (
+            <button
+              onClick={handleOpenForm}
+              className="px-4 py-2.5 rounded-lg bg-primary text-primary-foreground flex items-center hover:bg-primary/90 transition-colors"
+            >
+              <Plus size={18} className="mr-2" />
+              Novo Chamado
+            </button>
+          )}
+        </div>
       </div>
       
       <div className="glass p-4 rounded-xl mb-6">
