@@ -28,10 +28,8 @@ export function exportChamadosCSV(chamados: Chamado[], filename = 'chamados') {
 
   const escapeCSV = (val: string) => {
     if (!val) return '';
-    if (val.includes(',') || val.includes('"') || val.includes('\n')) {
-      return `"${val.replace(/"/g, '""')}"`;
-    }
-    return val;
+    // Always wrap in quotes and escape inner quotes for safety
+    return `"${val.replace(/"/g, '""')}"`;
   };
 
   const rows = chamados.map((c) => [
@@ -51,11 +49,12 @@ export function exportChamadosCSV(chamados: Chamado[], filename = 'chamados') {
     c.dataLimite ? new Date(c.dataLimite).toLocaleDateString('pt-BR') : '',
   ]);
 
+  // Use semicolon separator for Excel/LibreOffice compatibility with pt-BR locale
   const csvContent =
     '\uFEFF' +
-    headers.map(escapeCSV).join(',') +
+    headers.map(escapeCSV).join(';') +
     '\n' +
-    rows.map((row) => row.map(escapeCSV).join(',')).join('\n');
+    rows.map((row) => row.map(escapeCSV).join(';')).join('\n');
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
