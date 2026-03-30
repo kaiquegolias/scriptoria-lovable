@@ -35,7 +35,7 @@ export function useChamados(encerrados = false) {
         const formattedChamados: Chamado[] = data.map(item => ({
           id: item.id,
           titulo: item.titulo,
-          status: item.status as 'agendados' | 'agendados_planner' | 'agendados_aguardando' | 'em_andamento' | 'resolvido',
+          status: item.status as Chamado['status'],
           estruturante: item.estruturante as 'PNCP' | 'PEN' | 'Outros',
           nivel: item.nivel as 'N1' | 'N2' | 'N3',
           acompanhamento: item.acompanhamento,
