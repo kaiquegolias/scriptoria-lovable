@@ -110,7 +110,7 @@ export function useChamados(encerrados = false) {
         const newChamado: Chamado = {
           id: data.id,
           titulo: data.titulo,
-          status: data.status as 'agendados' | 'agendados_planner' | 'agendados_aguardando' | 'em_andamento' | 'resolvido',
+          status: data.status as Chamado['status'],
           estruturante: data.estruturante as 'PNCP' | 'PEN' | 'Outros',
           nivel: data.nivel as 'N1' | 'N2' | 'N3',
           acompanhamento: data.acompanhamento,
