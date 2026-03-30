@@ -8,6 +8,8 @@ import Dashboard from '@/pages/Dashboard';
 import Scripts from '@/pages/Scripts';
 import Chamados from '@/pages/Chamados';
 import ChamadosEncerrados from '@/pages/ChamadosEncerrados';
+import ChamadosExcluidos from '@/pages/ChamadosExcluidos';
+import DiarioAnalista from '@/pages/DiarioAnalista';
 import Profile from '@/pages/Profile';
 import NotFound from '@/pages/NotFound';
 import GeradorScripts from '@/pages/GeradorScripts';
@@ -33,6 +35,8 @@ function App() {
               <Route path="/scripts" element={<Scripts />} />
               <Route path="/chamados" element={<Chamados />} />
               <Route path="/chamados-encerrados" element={<ChamadosEncerrados />} />
+              <Route path="/chamados-excluidos" element={<ChamadosExcluidos />} />
+              <Route path="/diario" element={<DiarioAnalista />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/gerador-scripts" element={<GeradorScripts />} />
               <Route path="/scripts-modelos" element={<ScriptsModelos />} />

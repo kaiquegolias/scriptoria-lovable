@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FileText, LogOut, LogIn, Menu, X, UserCircle2, User, FileOutput, Eye, Sparkles } from 'lucide-react';
+import { FileText, LogOut, LogIn, Menu, X, UserCircle2, User, FileOutput, Eye, Sparkles, BookOpen, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import ThemeToggle from './ThemeToggle';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -54,6 +54,12 @@ const Navbar = () => {
               </Link>
               <Link to="/chamados-encerrados" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/chamados-encerrados' ? 'text-foreground' : 'text-foreground/60'}`}>
                 Encerrados
+              </Link>
+              <Link to="/chamados-excluidos" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/chamados-excluidos' ? 'text-foreground' : 'text-foreground/60'}`}>
+                Excluídos
+              </Link>
+              <Link to="/diario" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/diario' ? 'text-foreground' : 'text-foreground/60'}`}>
+                Diário
               </Link>
               <Link to="/scripts-modelos" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname.includes('/script-modelo') || location.pathname.includes('/gerador-script') ? 'text-foreground' : 'text-foreground/60'}`}>
                 Gerador de Scripts
@@ -151,6 +157,12 @@ const Navbar = () => {
               </Link>
               <Link to="/chamados-encerrados" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/chamados-encerrados' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
                 Encerrados
+              </Link>
+              <Link to="/chamados-excluidos" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/chamados-excluidos' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
+                Excluídos
+              </Link>
+              <Link to="/diario" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/diario' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
+                Diário do Analista
               </Link>
               <Link to="/scripts-modelos" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname.includes('/script-modelo') || location.pathname.includes('/gerador-script') ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
                 Gerador de Scripts

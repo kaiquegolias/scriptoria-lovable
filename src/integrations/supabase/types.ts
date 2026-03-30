@@ -188,10 +188,12 @@ export type Database = {
           classificacao: string | null
           data_atualizacao: string
           data_criacao: string
+          data_exclusao: string | null
           data_limite: string | null
           estruturante: string
           id: string
           links: string[] | null
+          motivo_exclusao: string | null
           nivel: string
           pen_modulo: string | null
           pen_po: string | null
@@ -208,10 +210,12 @@ export type Database = {
           classificacao?: string | null
           data_atualizacao?: string
           data_criacao?: string
+          data_exclusao?: string | null
           data_limite?: string | null
           estruturante: string
           id?: string
           links?: string[] | null
+          motivo_exclusao?: string | null
           nivel: string
           pen_modulo?: string | null
           pen_po?: string | null
@@ -228,10 +232,12 @@ export type Database = {
           classificacao?: string | null
           data_atualizacao?: string
           data_criacao?: string
+          data_exclusao?: string | null
           data_limite?: string | null
           estruturante?: string
           id?: string
           links?: string[] | null
+          motivo_exclusao?: string | null
           nivel?: string
           pen_modulo?: string | null
           pen_po?: string | null
@@ -240,6 +246,45 @@ export type Database = {
           pen_representante_tecnico?: string | null
           status?: string
           titulo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      diary_entries: {
+        Row: {
+          chamado_ids: string[] | null
+          completed: boolean
+          created_at: string
+          description: string | null
+          due_date: string | null
+          due_time: string | null
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chamado_ids?: string[] | null
+          completed?: boolean
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          due_time?: string | null
+          id?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chamado_ids?: string[] | null
+          completed?: boolean
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          due_time?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []

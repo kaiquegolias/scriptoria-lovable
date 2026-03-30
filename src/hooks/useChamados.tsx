@@ -35,7 +35,7 @@ export function useChamados(encerrados = false) {
         const formattedChamados: Chamado[] = data.map(item => ({
           id: item.id,
           titulo: item.titulo,
-          status: item.status as 'agendados' | 'agendados_planner' | 'agendados_aguardando' | 'em_andamento' | 'resolvido',
+          status: item.status as Chamado['status'],
           estruturante: item.estruturante as 'PNCP' | 'PEN' | 'Outros',
           nivel: item.nivel as 'N1' | 'N2' | 'N3',
           acompanhamento: item.acompanhamento,
@@ -51,11 +51,11 @@ export function useChamados(encerrados = false) {
           penRepresentanteTecnico: item.pen_representante_tecnico || undefined
         }));
         
-        // Filter based on encerrados param
+        // Filter based on encerrados param - exclude 'excluido' from both views
         if (encerrados) {
           setChamados(formattedChamados.filter(c => c.status === 'resolvido'));
         } else {
-          setChamados(formattedChamados.filter(c => c.status !== 'resolvido'));
+          setChamados(formattedChamados.filter(c => c.status !== 'resolvido' && c.status !== 'excluido'));
         }
       }
     } catch (error) {
@@ -110,7 +110,7 @@ export function useChamados(encerrados = false) {
         const newChamado: Chamado = {
           id: data.id,
           titulo: data.titulo,
-          status: data.status as 'agendados' | 'agendados_planner' | 'agendados_aguardando' | 'em_andamento' | 'resolvido',
+          status: data.status as Chamado['status'],
           estruturante: data.estruturante as 'PNCP' | 'PEN' | 'Outros',
           nivel: data.nivel as 'N1' | 'N2' | 'N3',
           acompanhamento: data.acompanhamento,
@@ -194,7 +194,7 @@ export function useChamados(encerrados = false) {
         const updatedChamado: Chamado = {
           id: data.id,
           titulo: data.titulo,
-          status: data.status as 'agendados' | 'agendados_planner' | 'agendados_aguardando' | 'em_andamento' | 'resolvido',
+          status: data.status as Chamado['status'],
           estruturante: data.estruturante as 'PNCP' | 'PEN' | 'Outros',
           nivel: data.nivel as 'N1' | 'N2' | 'N3',
           acompanhamento: data.acompanhamento,
@@ -392,7 +392,7 @@ export function useChamados(encerrados = false) {
     return null;
   };
 
-  // Delete a chamado with justification and logging
+  // Delete a chamado (soft delete - changes status to 'excluido')
   const deleteChamado = async (id: string, justification?: string) => {
     if (!user) {
       toast.error('Você precisa estar logado para excluir chamados.');
@@ -400,17 +400,22 @@ export function useChamados(encerrados = false) {
     }
 
     try {
-      // Get chamado data before deletion for logging
+      // Get chamado data before soft-delete for logging
       const { data: chamadoData } = await supabase
         .from('chamados')
         .select('*')
         .eq('id', id)
         .single();
 
-      // Delete from chamados table
+      // Soft delete: update status to 'excluido'
       const { error } = await supabase
         .from('chamados')
-        .delete()
+        .update({
+          status: 'excluido',
+          motivo_exclusao: justification || 'Não informada',
+          data_exclusao: new Date().toISOString(),
+          data_atualizacao: new Date().toISOString(),
+        })
         .eq('id', id);
 
       if (error) {
@@ -453,7 +458,7 @@ export function useChamados(encerrados = false) {
           entity_type: 'chamado',
           entity_id: id,
           old_data: chamadoData,
-          new_data: null,
+          new_data: { status: 'excluido', motivo_exclusao: justification },
           metadata: {
             justification: justification || 'Não informada',
             deleted_at: new Date().toISOString()

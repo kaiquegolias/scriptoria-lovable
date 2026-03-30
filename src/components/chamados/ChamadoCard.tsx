@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface Chamado {
   id: string;
   titulo: string;
-  status: 'agendados' | 'agendados_planner' | 'agendados_aguardando' | 'em_andamento' | 'resolvido';
+  status: 'agendados' | 'agendados_planner' | 'agendados_aguardando' | 'em_andamento' | 'resolvido' | 'excluido';
   estruturante: 'PNCP' | 'PEN' | 'Outros';
   nivel: 'N1' | 'N2' | 'N3';
   acompanhamento: string;

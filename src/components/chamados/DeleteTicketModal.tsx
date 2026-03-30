@@ -21,21 +21,28 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
   onClose,
   onConfirm
 }) => {
+  const [motivoTipo, setMotivoTipo] = useState<'n3' | 'outros'>('outros');
   const [justification, setJustification] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const getFullJustification = () => {
+    if (motivoTipo === 'n3') return 'Subiu para N3';
+    return justification.trim();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!justification.trim()) {
+    const fullJustification = getFullJustification();
+    if (!fullJustification) {
       setError('A justificativa é obrigatória.');
       return;
     }
 
-    if (justification.trim().length < 10) {
+    if (motivoTipo === 'outros' && fullJustification.length < 10) {
       setError('A justificativa deve ter pelo menos 10 caracteres.');
       return;
     }
@@ -70,7 +77,7 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
       }
 
       // Password verified, proceed with deletion
-      await onConfirm(ticketId, justification.trim());
+      await onConfirm(ticketId, getFullJustification());
       toast.success('Chamado excluído com sucesso.');
       onClose();
     } catch (err) {
@@ -119,17 +126,43 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="justification" className="text-foreground">
-                Justificativa da exclusão <span className="text-destructive">*</span>
+              <Label className="text-foreground">
+                Motivo da exclusão <span className="text-destructive">*</span>
               </Label>
-              <Textarea
-                id="justification"
-                placeholder="Descreva o motivo da exclusão deste chamado..."
-                value={justification}
-                onChange={(e) => setJustification(e.target.value)}
-                className="min-h-[100px] resize-none"
-                disabled={loading}
-              />
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setMotivoTipo('n3'); setJustification(''); }}
+                  className={`flex-1 p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                    motivoTipo === 'n3'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border hover:border-primary/50'
+                  }`}
+                >
+                  Subiu para N3
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMotivoTipo('outros')}
+                  className={`flex-1 p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                    motivoTipo === 'outros'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border hover:border-primary/50'
+                  }`}
+                >
+                  Outros
+                </button>
+              </div>
+              {motivoTipo === 'outros' && (
+                <Textarea
+                  id="justification"
+                  placeholder="Descreva o motivo da exclusão deste chamado..."
+                  value={justification}
+                  onChange={(e) => setJustification(e.target.value)}
+                  className="min-h-[100px] resize-none"
+                  disabled={loading}
+                />
+              )}
             </div>
 
             <div className="space-y-2">
