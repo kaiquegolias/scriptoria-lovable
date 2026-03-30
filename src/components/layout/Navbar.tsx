@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FileText, LogOut, LogIn, Menu, X, UserCircle2, User, FileOutput, Eye, Sparkles } from 'lucide-react';
+import { FileText, LogOut, LogIn, Menu, X, UserCircle2, User, FileOutput, Eye, Sparkles, BookOpen, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import ThemeToggle from './ThemeToggle';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
