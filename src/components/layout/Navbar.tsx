@@ -55,6 +55,12 @@ const Navbar = () => {
               <Link to="/chamados-encerrados" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/chamados-encerrados' ? 'text-foreground' : 'text-foreground/60'}`}>
                 Encerrados
               </Link>
+              <Link to="/chamados-excluidos" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/chamados-excluidos' ? 'text-foreground' : 'text-foreground/60'}`}>
+                Excluídos
+              </Link>
+              <Link to="/diario" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/diario' ? 'text-foreground' : 'text-foreground/60'}`}>
+                Diário
+              </Link>
               <Link to="/scripts-modelos" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname.includes('/script-modelo') || location.pathname.includes('/gerador-script') ? 'text-foreground' : 'text-foreground/60'}`}>
                 Gerador de Scripts
               </Link>
