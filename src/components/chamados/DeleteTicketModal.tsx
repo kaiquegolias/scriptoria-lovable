@@ -126,17 +126,43 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="justification" className="text-foreground">
-                Justificativa da exclusão <span className="text-destructive">*</span>
+              <Label className="text-foreground">
+                Motivo da exclusão <span className="text-destructive">*</span>
               </Label>
-              <Textarea
-                id="justification"
-                placeholder="Descreva o motivo da exclusão deste chamado..."
-                value={justification}
-                onChange={(e) => setJustification(e.target.value)}
-                className="min-h-[100px] resize-none"
-                disabled={loading}
-              />
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setMotivoTipo('n3'); setJustification(''); }}
+                  className={`flex-1 p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                    motivoTipo === 'n3'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border hover:border-primary/50'
+                  }`}
+                >
+                  Subiu para N3
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMotivoTipo('outros')}
+                  className={`flex-1 p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                    motivoTipo === 'outros'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border hover:border-primary/50'
+                  }`}
+                >
+                  Outros
+                </button>
+              </div>
+              {motivoTipo === 'outros' && (
+                <Textarea
+                  id="justification"
+                  placeholder="Descreva o motivo da exclusão deste chamado..."
+                  value={justification}
+                  onChange={(e) => setJustification(e.target.value)}
+                  className="min-h-[100px] resize-none"
+                  disabled={loading}
+                />
+              )}
             </div>
 
             <div className="space-y-2">
