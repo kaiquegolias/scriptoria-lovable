@@ -36,12 +36,13 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
     e.preventDefault();
     setError('');
 
-    if (!justification.trim()) {
+    const fullJustification = getFullJustification();
+    if (!fullJustification) {
       setError('A justificativa é obrigatória.');
       return;
     }
 
-    if (justification.trim().length < 10) {
+    if (motivoTipo === 'outros' && fullJustification.length < 10) {
       setError('A justificativa deve ter pelo menos 10 caracteres.');
       return;
     }
