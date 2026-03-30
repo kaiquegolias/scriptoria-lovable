@@ -37,6 +37,7 @@ function App() {
               <Route path="/chamados-encerrados" element={<ChamadosEncerrados />} />
               <Route path="/chamados-excluidos" element={<ChamadosExcluidos />} />
               <Route path="/diario" element={<DiarioAnalista />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="/gerador-scripts" element={<GeradorScripts />} />
               <Route path="/scripts-modelos" element={<ScriptsModelos />} />
               <Route path="/supervisor" element={<Supervisor />} />

@@ -158,6 +158,12 @@ const Navbar = () => {
               <Link to="/chamados-encerrados" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/chamados-encerrados' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
                 Encerrados
               </Link>
+              <Link to="/chamados-excluidos" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/chamados-excluidos' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
+                Excluídos
+              </Link>
+              <Link to="/diario" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/diario' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
+                Diário do Analista
+              </Link>
               <Link to="/scripts-modelos" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname.includes('/script-modelo') || location.pathname.includes('/gerador-script') ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
                 Gerador de Scripts
               </Link>
