@@ -21,10 +21,16 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
   onClose,
   onConfirm
 }) => {
+  const [motivoTipo, setMotivoTipo] = useState<'n3' | 'outros'>('outros');
   const [justification, setJustification] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const getFullJustification = () => {
+    if (motivoTipo === 'n3') return 'Subiu para N3';
+    return justification.trim();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
