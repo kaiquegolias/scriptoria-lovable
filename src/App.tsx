@@ -8,6 +8,8 @@ import Dashboard from '@/pages/Dashboard';
 import Scripts from '@/pages/Scripts';
 import Chamados from '@/pages/Chamados';
 import ChamadosEncerrados from '@/pages/ChamadosEncerrados';
+import ChamadosExcluidos from '@/pages/ChamadosExcluidos';
+import DiarioAnalista from '@/pages/DiarioAnalista';
 import Profile from '@/pages/Profile';
 import NotFound from '@/pages/NotFound';
 import GeradorScripts from '@/pages/GeradorScripts';
