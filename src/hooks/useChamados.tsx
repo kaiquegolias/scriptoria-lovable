@@ -51,11 +51,11 @@ export function useChamados(encerrados = false) {
           penRepresentanteTecnico: item.pen_representante_tecnico || undefined
         }));
         
-        // Filter based on encerrados param
+        // Filter based on encerrados param - exclude 'excluido' from both views
         if (encerrados) {
           setChamados(formattedChamados.filter(c => c.status === 'resolvido'));
         } else {
-          setChamados(formattedChamados.filter(c => c.status !== 'resolvido'));
+          setChamados(formattedChamados.filter(c => c.status !== 'resolvido' && c.status !== 'excluido'));
         }
       }
     } catch (error) {
