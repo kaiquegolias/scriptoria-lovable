@@ -77,7 +77,7 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
       }
 
       // Password verified, proceed with deletion
-      await onConfirm(ticketId, justification.trim());
+      await onConfirm(ticketId, getFullJustification());
       toast.success('Chamado excluído com sucesso.');
       onClose();
     } catch (err) {
