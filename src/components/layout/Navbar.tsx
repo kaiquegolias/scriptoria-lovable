@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FileText, LogOut, LogIn, Menu, X, UserCircle2, User, FileOutput, Eye, Sparkles, BookOpen, Trash2 } from 'lucide-react';
+import { FileText, LogOut, LogIn, Menu, X, UserCircle2, User, Sparkles, BookOpen, Calendar, Trash2, Eye, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import ThemeToggle from './ThemeToggle';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -15,101 +15,92 @@ const Navbar = () => {
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const toggleMenu = () => {
-    setMenuOpen(!menuOpen);
-  };
-
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
-
-  const closeSidebar = () => {
-    setSidebarOpen(false);
-  };
-
   const handleLogout = async () => {
     await signOut();
     navigate('/');
   };
+
+  const navLinks = [
+    { to: '/dashboard', label: 'Dashboard' },
+    { to: '/scripts', label: 'Scripts' },
+    { to: '/chamados', label: 'Chamados' },
+    { to: '/chamados-encerrados', label: 'Encerrados' },
+    { to: '/chamados-excluidos', label: 'Excluídos' },
+    { to: '/diario', label: 'Diário' },
+    { to: '/scripts-modelos', label: 'Gerador', matchPaths: ['/script-modelo', '/gerador-script'] },
+    { to: '/supervisor', label: 'Supervisor' },
+    { to: '/biblioteca', label: 'Biblioteca' },
+    { to: '/cortana', label: 'Cortana', icon: Sparkles },
+  ];
+
+  const isActive = (link: typeof navLinks[0]) => {
+    if (link.matchPaths) return link.matchPaths.some(p => location.pathname.includes(p));
+    return location.pathname === link.to;
+  };
   
   return (
-    <header className="sticky top-0 z-50 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between px-4">
+    <header className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-14 items-center justify-between px-4">
         <div className="flex items-center gap-4">
-          <Link to="/" className="flex items-center space-x-2">
-            <FileText className="h-6 w-6 text-primary" />
-            <span className="font-bold text-lg">Thoth</span>
+          <Link to="/" className="flex items-center space-x-2 group">
+            <div className="p-1.5 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+              <FileText className="h-4 w-4 text-primary" />
+            </div>
+            <span className="font-bold text-base">Thoth</span>
           </Link>
           
           {user && (
-            <nav className="hidden md:flex items-center space-x-4 lg:space-x-6 ml-6">
-              <Link to="/dashboard" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/dashboard' ? 'text-foreground' : 'text-foreground/60'}`}>
-                Dashboard
-              </Link>
-              <Link to="/scripts" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/scripts' ? 'text-foreground' : 'text-foreground/60'}`}>
-                Scripts
-              </Link>
-              <Link to="/chamados" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/chamados' ? 'text-foreground' : 'text-foreground/60'}`}>
-                Chamados
-              </Link>
-              <Link to="/chamados-encerrados" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/chamados-encerrados' ? 'text-foreground' : 'text-foreground/60'}`}>
-                Encerrados
-              </Link>
-              <Link to="/chamados-excluidos" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/chamados-excluidos' ? 'text-foreground' : 'text-foreground/60'}`}>
-                Excluídos
-              </Link>
-              <Link to="/diario" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/diario' ? 'text-foreground' : 'text-foreground/60'}`}>
-                Diário
-              </Link>
-              <Link to="/scripts-modelos" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname.includes('/script-modelo') || location.pathname.includes('/gerador-script') ? 'text-foreground' : 'text-foreground/60'}`}>
-                Gerador de Scripts
-              </Link>
-              <Link to="/supervisor" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/supervisor' ? 'text-foreground' : 'text-foreground/60'}`}>
-                Supervisor
-              </Link>
-              <Link to="/biblioteca" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/biblioteca' ? 'text-foreground' : 'text-foreground/60'}`}>
-                Biblioteca
-              </Link>
-              <Link to="/cortana" className={`text-sm font-medium transition-colors hover:text-primary flex items-center gap-1 ${location.pathname === '/cortana' ? 'text-foreground' : 'text-foreground/60'}`}>
-                <Sparkles className="h-3.5 w-3.5" />
-                Cortana
-              </Link>
+            <nav className="hidden md:flex items-center space-x-1 ml-4">
+              {navLinks.map(link => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={`text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all duration-200 flex items-center gap-1 ${
+                    isActive(link) 
+                      ? 'bg-accent text-accent-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                  }`}
+                >
+                  {link.icon && <link.icon className="h-3 w-3" />}
+                  {link.label}
+                </Link>
+              ))}
             </nav>
           )}
         </div>
 
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2">
           {user && <NotificationBell />}
           <ThemeToggle />
           
           {user ? (
             <div className="relative">
               <button
-                onClick={toggleMenu}
-                className="flex items-center gap-1 text-sm font-medium hover:text-primary py-1.5 px-2 rounded-md hover:bg-accent transition-colors"
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="flex items-center gap-1.5 text-sm font-medium py-1.5 px-2.5 rounded-xl hover:bg-accent transition-colors"
               >
-                <UserCircle2 size={20} />
-                <span className="max-w-[100px] truncate hidden sm:block">
+                <UserCircle2 size={18} />
+                <span className="max-w-[80px] truncate hidden sm:block text-xs">
                   {user.email?.split('@')[0]}
                 </span>
               </button>
               
               {menuOpen && (
-                <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-card border border-border overflow-hidden z-10">
+                <div className="absolute right-0 mt-2 w-48 rounded-xl shadow-lg bg-card border border-border overflow-hidden z-10 animate-scale-in">
                   <div className="py-1">
                     <Link
                       to="/profile"
                       onClick={() => setMenuOpen(false)}
-                      className="flex items-center px-4 py-2 text-sm hover:bg-accent transition-colors"
+                      className="flex items-center px-4 py-2.5 text-sm hover:bg-accent transition-colors"
                     >
-                      <User size={16} className="mr-2" />
+                      <User size={15} className="mr-2.5" />
                       Meu Perfil
                     </Link>
                     <button
-                      onClick={handleLogout}
-                      className="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 hover:bg-accent transition-colors"
+                      onClick={() => { setMenuOpen(false); handleLogout(); }}
+                      className="w-full text-left flex items-center px-4 py-2.5 text-sm text-destructive hover:bg-accent transition-colors"
                     >
-                      <LogOut size={16} className="mr-2" />
+                      <LogOut size={15} className="mr-2.5" />
                       Sair
                     </button>
                   </div>
@@ -125,11 +116,11 @@ const Navbar = () => {
           
           {user && (
             <button 
-              onClick={toggleSidebar} 
-              className="md:hidden ml-2"
+              onClick={() => setSidebarOpen(!sidebarOpen)} 
+              className="md:hidden p-2 rounded-lg hover:bg-accent transition-colors"
               aria-label="Menu"
             >
-              <Menu size={20} />
+              <Menu size={18} />
             </button>
           )}
         </div>
@@ -137,58 +128,44 @@ const Navbar = () => {
       
       {/* Mobile sidebar */}
       {isMobile && sidebarOpen && user && (
-        <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm" onClick={closeSidebar}>
-          <div className="fixed inset-y-0 right-0 w-64 bg-background border-l border-border/40 shadow-xl p-4" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-4 pb-2 border-b">
-              <h2 className="font-medium">Menu</h2>
-              <button onClick={closeSidebar} className="p-1 rounded-full hover:bg-accent/60">
-                <X size={20} />
+        <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm" onClick={() => setSidebarOpen(false)}>
+          <div className="fixed inset-y-0 right-0 w-72 bg-card border-l border-border shadow-2xl p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="font-semibold text-base">Menu</h2>
+              <button onClick={() => setSidebarOpen(false)} className="p-2 rounded-lg hover:bg-accent">
+                <X size={18} />
               </button>
             </div>
-            <nav className="space-y-2">
-              <Link to="/dashboard" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/dashboard' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
-                Dashboard
-              </Link>
-              <Link to="/scripts" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/scripts' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
-                Scripts
-              </Link>
-              <Link to="/chamados" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/chamados' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
-                Chamados
-              </Link>
-              <Link to="/chamados-encerrados" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/chamados-encerrados' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
-                Encerrados
-              </Link>
-              <Link to="/chamados-excluidos" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/chamados-excluidos' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
-                Excluídos
-              </Link>
-              <Link to="/diario" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/diario' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
-                Diário do Analista
-              </Link>
-              <Link to="/scripts-modelos" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname.includes('/script-modelo') || location.pathname.includes('/gerador-script') ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
-                Gerador de Scripts
-              </Link>
-              <Link to="/supervisor" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/supervisor' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
-                Supervisor
-              </Link>
-              <Link to="/biblioteca" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/biblioteca' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
-                Biblioteca
-              </Link>
-              <Link to="/cortana" className={`flex items-center gap-2 py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/cortana' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
-                <Sparkles className="h-4 w-4" />
-                Cortana
-              </Link>
-              <Link to="/profile" className={`block py-2 px-3 rounded-lg hover:bg-accent ${location.pathname === '/profile' ? 'bg-accent/80 text-foreground' : 'text-foreground/70'}`} onClick={closeSidebar}>
+            <nav className="space-y-1">
+              {navLinks.map(link => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={`flex items-center gap-2.5 py-2.5 px-3.5 rounded-xl transition-colors text-sm ${
+                    isActive(link) ? 'bg-accent text-accent-foreground font-medium' : 'text-muted-foreground hover:bg-accent/50'
+                  }`}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  {link.icon && <link.icon className="h-4 w-4" />}
+                  {link.label}
+                </Link>
+              ))}
+              <Link
+                to="/profile"
+                className={`flex items-center gap-2.5 py-2.5 px-3.5 rounded-xl transition-colors text-sm ${
+                  location.pathname === '/profile' ? 'bg-accent text-accent-foreground font-medium' : 'text-muted-foreground hover:bg-accent/50'
+                }`}
+                onClick={() => setSidebarOpen(false)}
+              >
+                <User className="h-4 w-4" />
                 Meu Perfil
               </Link>
               
               <button
-                onClick={() => {
-                  closeSidebar();
-                  handleLogout();
-                }}
-                className="w-full text-left flex items-center py-2 px-3 rounded-lg text-red-600 hover:bg-accent"
+                onClick={() => { setSidebarOpen(false); handleLogout(); }}
+                className="w-full flex items-center gap-2.5 py-2.5 px-3.5 rounded-xl text-destructive hover:bg-accent text-sm"
               >
-                <LogOut size={16} className="mr-2" />
+                <LogOut className="h-4 w-4" />
                 Sair
               </button>
             </nav>
