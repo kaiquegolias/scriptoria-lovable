@@ -17,27 +17,27 @@ const StatCard: React.FC<StatCardProps> = ({
   color = 'primary',
 }) => {
   const colorMap: Record<string, string> = {
-    primary: 'bg-primary text-white',
-    success: 'bg-status-success text-white',
-    warning: 'bg-status-warning text-white',
-    error: 'bg-status-error text-white',
-    info: 'bg-status-info text-white',
-    pncp: 'bg-estruturante-pncp text-white',
-    pen: 'bg-estruturante-pen text-white',
+    primary: 'bg-primary/10 text-primary',
+    success: 'bg-success/10 text-success',
+    warning: 'bg-warning/10 text-warning',
+    error: 'bg-destructive/10 text-destructive',
+    info: 'bg-primary/10 text-primary',
+    pncp: 'bg-estruturante-pncp/10 text-estruturante-pncp',
+    pen: 'bg-estruturante-pen/10 text-estruturante-pen',
   };
 
   const bgColor = colorMap[color] || colorMap.primary;
 
   return (
-    <div className="glass rounded-xl shadow-sm overflow-hidden hover-lift">
-      <div className="flex">
-        <div className={`flex items-center justify-center p-4 ${bgColor}`}>
+    <div className="bg-card border border-border/60 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300">
+      <div className="flex items-start gap-4 p-5">
+        <div className={`p-2.5 rounded-xl ${bgColor} shrink-0`}>
           {icon}
         </div>
-        <div className="p-4 flex-1">
-          <h3 className="text-sm font-medium text-foreground/70">{title}</h3>
-          <p className="text-2xl font-bold mt-1">{value}</p>
-          {description && <p className="text-xs text-foreground/60 mt-1">{description}</p>}
+        <div className="flex-1 min-w-0">
+          <h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
+          <p className="text-2xl font-bold mt-0.5">{value}</p>
+          {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
         </div>
       </div>
     </div>

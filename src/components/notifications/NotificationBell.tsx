@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, X, AlertTriangle, ExternalLink, Trash2, CheckCircle, CheckCheck } from 'lucide-react';
+import { Bell, X, AlertTriangle, ExternalLink, Trash2, CheckCircle, CheckCheck, Calendar, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '@/hooks/useNotifications';
 import { Badge } from '@/components/ui/badge';
@@ -19,10 +19,12 @@ const NotificationBell: React.FC = () => {
   
   const {
     activeOverdueTickets,
+    overdueDiaryEntries,
     systemAlerts,
     displayCount,
     totalCount,
     overdueCount,
+    diaryCount,
     alertsCount,
     loading,
     dismissNotification,
@@ -37,16 +39,13 @@ const NotificationBell: React.FC = () => {
         setIsOpen(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleBellClick = async () => {
     setIsOpen(!isOpen);
-    if (!isOpen) {
-      await logBellClick();
-    }
+    if (!isOpen) await logBellClick();
   };
 
   const handleGoToTicket = async (ticketId: string) => {
@@ -62,9 +61,9 @@ const NotificationBell: React.FC = () => {
 
   const getNivelColor = (nivel: string) => {
     switch (nivel) {
-      case 'N3': return 'bg-destructive text-destructive-foreground';
-      case 'N2': return 'bg-yellow-500 text-white';
-      case 'N1': return 'bg-blue-500 text-white';
+      case 'N3': return 'bg-destructive/10 text-destructive border-destructive/20';
+      case 'N2': return 'bg-warning/10 text-warning border-warning/20';
+      case 'N1': return 'bg-primary/10 text-primary border-primary/20';
       default: return 'bg-muted text-muted-foreground';
     }
   };
@@ -72,24 +71,43 @@ const NotificationBell: React.FC = () => {
   const getAlertIcon = (type: string) => {
     switch (type) {
       case 'deleted': return <Trash2 className="h-4 w-4 text-destructive" />;
-      case 'closed': return <CheckCircle className="h-4 w-4 text-green-500" />;
-      default: return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+      case 'closed': return <CheckCircle className="h-4 w-4 text-success" />;
+      default: return <AlertTriangle className="h-4 w-4 text-warning" />;
     }
   };
 
-  const getAlertBadgeColor = (type: string) => {
-    switch (type) {
-      case 'deleted': return 'bg-destructive/10 text-destructive border-destructive/20';
-      case 'closed': return 'bg-green-500/10 text-green-600 border-green-500/20';
-      default: return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
-    }
-  };
+  const renderDiaryEntries = () => (
+    overdueDiaryEntries.map(entry => (
+      <div
+        key={entry.id}
+        className="p-3.5 hover:bg-accent/50 transition-colors cursor-pointer border-b border-border/30 last:border-0"
+        onClick={() => { setIsOpen(false); navigate('/diario'); }}
+      >
+        <div className="flex items-start gap-3">
+          <div className={`p-1.5 rounded-lg ${entry.isDueToday ? 'bg-warning/10' : 'bg-destructive/10'}`}>
+            <Clock className={`h-4 w-4 ${entry.isDueToday ? 'text-warning' : 'text-destructive'}`} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-sm truncate">{entry.title}</p>
+            <div className="flex items-center gap-2 mt-1.5">
+              <Badge variant="outline" className={`text-[10px] ${entry.isDueToday ? 'border-warning/30 text-warning' : 'border-destructive/30 text-destructive'}`}>
+                {entry.isDueToday ? 'Vence hoje' : `Vencido há ${entry.diasAtraso} dia${entry.diasAtraso !== 1 ? 's' : ''}`}
+              </Badge>
+              {entry.dueTime && (
+                <span className="text-xs text-muted-foreground">às {entry.dueTime}</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    ))
+  );
 
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={handleBellClick}
-        className="relative p-2 rounded-full hover:bg-accent transition-colors"
+        className="relative p-2.5 rounded-xl hover:bg-accent transition-all duration-200"
         aria-label="Notificações"
       >
         <Bell className="h-5 w-5" />
@@ -97,7 +115,7 @@ const NotificationBell: React.FC = () => {
           <motion.span
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full px-1"
+            className="absolute -top-0.5 -right-0.5 min-w-[20px] h-[20px] flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full px-1 shadow-sm"
           >
             {displayCount}
           </motion.span>
@@ -107,17 +125,19 @@ const NotificationBell: React.FC = () => {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+            initial={{ opacity: 0, y: -8, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            exit={{ opacity: 0, y: -8, scale: 0.96 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 mt-2 w-[420px] max-w-[calc(100vw-2rem)] bg-card border border-border rounded-lg shadow-xl z-50"
+            className="absolute right-0 mt-2 w-[440px] max-w-[calc(100vw-2rem)] bg-card border border-border rounded-2xl shadow-2xl z-50 overflow-hidden"
           >
-            <div className="p-3 border-b border-border">
+            <div className="p-4 border-b border-border/50 bg-accent/30">
               <div className="flex items-center gap-2">
-                <Bell className="h-4 w-4 text-primary" />
+                <div className="p-1.5 rounded-lg bg-primary/10">
+                  <Bell className="h-4 w-4 text-primary" />
+                </div>
                 <h3 className="font-semibold text-sm">Notificações</h3>
-                <Badge variant="outline" className="ml-auto">
+                <Badge variant="outline" className="ml-auto text-xs">
                   {totalCount}
                 </Badge>
                 {totalCount > 0 && (
@@ -131,111 +151,92 @@ const NotificationBell: React.FC = () => {
                     }}
                   >
                     <CheckCheck className="h-3 w-3 mr-1" />
-                    Limpar tudo
+                    Limpar
                   </Button>
                 )}
               </div>
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="w-full grid grid-cols-3 p-1 m-2 h-auto">
+              <TabsList className="w-full grid grid-cols-4 p-1 mx-3 mt-2 h-auto" style={{ width: 'calc(100% - 24px)' }}>
                 <TabsTrigger value="all" className="text-xs py-1.5">
                   Todos ({totalCount})
                 </TabsTrigger>
                 <TabsTrigger value="overdue" className="text-xs py-1.5">
                   Vencidos ({overdueCount})
                 </TabsTrigger>
+                <TabsTrigger value="diary" className="text-xs py-1.5">
+                  Diário ({diaryCount})
+                </TabsTrigger>
                 <TabsTrigger value="alerts" className="text-xs py-1.5">
                   Alertas ({alertsCount})
                 </TabsTrigger>
               </TabsList>
 
-              <ScrollArea className="h-[400px] overflow-y-auto">
+              <ScrollArea className="h-[380px] overflow-y-auto">
                 <TabsContent value="all" className="m-0">
                   {loading ? (
-                    <div className="p-4 text-center text-muted-foreground">
-                      Carregando...
+                    <div className="p-8 text-center text-muted-foreground">
+                      <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-primary mx-auto mb-2" />
+                      <p className="text-sm">Carregando...</p>
                     </div>
                   ) : totalCount === 0 ? (
-                    <div className="p-6 text-center text-muted-foreground">
-                      <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">Nenhuma notificação</p>
+                    <div className="p-10 text-center text-muted-foreground">
+                      <Bell className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                      <p className="text-sm font-medium">Tudo em dia!</p>
+                      <p className="text-xs mt-1 text-muted-foreground/70">Nenhuma notificação pendente</p>
                     </div>
                   ) : (
-                    <div className="divide-y divide-border">
-                      {/* System Alerts */}
+                    <div>
+                      {renderDiaryEntries()}
                       {systemAlerts.map((alert) => (
-                        <div
-                          key={alert.id}
-                          className="p-3 hover:bg-accent/50 transition-colors"
-                        >
+                        <div key={alert.id} className="p-3.5 hover:bg-accent/50 transition-colors border-b border-border/30 last:border-0">
                           <div className="flex items-start gap-3">
                             {getAlertIcon(alert.type)}
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline" className={`text-[10px] ${getAlertBadgeColor(alert.type)}`}>
-                                  {alert.type === 'deleted' ? 'Excluído' : 'Finalizado'}
-                                </Badge>
-                              </div>
-                              <p className="text-sm mt-1 line-clamp-2">{alert.message}</p>
+                              <Badge variant="outline" className="text-[10px] mb-1">
+                                {alert.type === 'deleted' ? 'Excluído' : 'Finalizado'}
+                              </Badge>
+                              <p className="text-sm line-clamp-2">{alert.message}</p>
                               <p className="text-xs text-muted-foreground mt-1">
                                 {format(new Date(alert.timestamp), "dd/MM 'às' HH:mm", { locale: ptBR })}
-                                {alert.userEmail && ` • ${alert.userEmail}`}
                               </p>
                             </div>
                           </div>
                         </div>
                       ))}
-
-                      {/* Overdue Tickets */}
                       {activeOverdueTickets.map((ticket) => (
                         <div
                           key={ticket.id}
-                          className="p-3 hover:bg-accent/50 transition-colors cursor-pointer"
+                          className="p-3.5 hover:bg-accent/50 transition-colors cursor-pointer border-b border-border/30 last:border-0"
                           onClick={() => handleGoToTicket(ticket.id)}
                         >
                           <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-start gap-3">
-                              <AlertTriangle className="h-4 w-4 text-destructive mt-0.5" />
+                            <div className="flex items-start gap-3 flex-1 min-w-0">
+                              <div className="p-1.5 rounded-lg bg-destructive/10">
+                                <AlertTriangle className="h-4 w-4 text-destructive" />
+                              </div>
                               <div className="flex-1 min-w-0">
                                 <p className="font-medium text-sm truncate">{ticket.titulo}</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <Badge variant="outline" className={getNivelColor(ticket.nivel)}>
+                                <div className="flex items-center gap-2 mt-1.5">
+                                  <Badge variant="outline" className={`text-[10px] ${getNivelColor(ticket.nivel)}`}>
                                     {ticket.nivel}
                                   </Badge>
-                                  <span className="text-xs text-muted-foreground">
-                                    {ticket.estruturante}
-                                  </span>
+                                  <span className="text-xs text-muted-foreground">{ticket.estruturante}</span>
                                 </div>
                                 <p className="text-xs text-destructive mt-1">
-                                  Vencido há {ticket.diasAtraso} dia{ticket.diasAtraso !== 1 ? 's' : ''} 
-                                  {' '}• {format(new Date(ticket.dataLimite), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                                  Vencido há {ticket.diasAtraso} dia{ticket.diasAtraso !== 1 ? 's' : ''}
                                 </p>
                               </div>
                             </div>
-                            <div className="flex flex-col gap-1">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleGoToTicket(ticket.id);
-                                }}
-                              >
-                                <ExternalLink className="h-3 w-3 mr-1" />
-                                Ver
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 text-xs text-muted-foreground"
-                                onClick={(e) => handleDismiss(e, ticket.id)}
-                              >
-                                <X className="h-3 w-3 mr-1" />
-                                Ocultar
-                              </Button>
-                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 text-xs shrink-0"
+                              onClick={(e) => handleDismiss(e, ticket.id)}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
                           </div>
                         </div>
                       ))}
@@ -244,62 +245,36 @@ const NotificationBell: React.FC = () => {
                 </TabsContent>
 
                 <TabsContent value="overdue" className="m-0">
-                  {loading ? (
-                    <div className="p-4 text-center text-muted-foreground">
-                      Carregando...
-                    </div>
-                  ) : activeOverdueTickets.length === 0 ? (
-                    <div className="p-6 text-center text-muted-foreground">
-                      <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">Nenhum chamado vencido</p>
+                  {activeOverdueTickets.length === 0 ? (
+                    <div className="p-10 text-center text-muted-foreground">
+                      <CheckCircle className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                      <p className="text-sm font-medium">Nenhum chamado vencido</p>
                     </div>
                   ) : (
-                    <div className="divide-y divide-border">
+                    <div>
                       {activeOverdueTickets.map((ticket) => (
                         <div
                           key={ticket.id}
-                          className="p-3 hover:bg-accent/50 transition-colors cursor-pointer"
+                          className="p-3.5 hover:bg-accent/50 transition-colors cursor-pointer border-b border-border/30 last:border-0"
                           onClick={() => handleGoToTicket(ticket.id)}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm truncate">{ticket.titulo}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="outline" className={getNivelColor(ticket.nivel)}>
+                              <div className="flex items-center gap-2 mt-1.5">
+                                <Badge variant="outline" className={`text-[10px] ${getNivelColor(ticket.nivel)}`}>
                                   {ticket.nivel}
                                 </Badge>
-                                <span className="text-xs text-muted-foreground">
-                                  {ticket.estruturante}
-                                </span>
+                                <span className="text-xs text-muted-foreground">{ticket.estruturante}</span>
                               </div>
                               <p className="text-xs text-destructive mt-1">
-                                Vencido há {ticket.diasAtraso} dia{ticket.diasAtraso !== 1 ? 's' : ''} 
+                                Vencido há {ticket.diasAtraso} dia{ticket.diasAtraso !== 1 ? 's' : ''}
                                 {' '}• {format(new Date(ticket.dataLimite), "dd/MM 'às' HH:mm", { locale: ptBR })}
                               </p>
                             </div>
-                            <div className="flex flex-col gap-1">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleGoToTicket(ticket.id);
-                                }}
-                              >
-                                <ExternalLink className="h-3 w-3 mr-1" />
-                                Ver
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 text-xs text-muted-foreground"
-                                onClick={(e) => handleDismiss(e, ticket.id)}
-                              >
-                                <X className="h-3 w-3 mr-1" />
-                                Ocultar
-                              </Button>
-                            </div>
+                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => handleDismiss(e, ticket.id)}>
+                              <X className="h-3 w-3" />
+                            </Button>
                           </div>
                         </div>
                       ))}
@@ -307,35 +282,36 @@ const NotificationBell: React.FC = () => {
                   )}
                 </TabsContent>
 
-                <TabsContent value="alerts" className="m-0">
-                  {loading ? (
-                    <div className="p-4 text-center text-muted-foreground">
-                      Carregando...
-                    </div>
-                  ) : systemAlerts.length === 0 ? (
-                    <div className="p-6 text-center text-muted-foreground">
-                      <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">Nenhum alerta do sistema</p>
+                <TabsContent value="diary" className="m-0">
+                  {overdueDiaryEntries.length === 0 ? (
+                    <div className="p-10 text-center text-muted-foreground">
+                      <Calendar className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                      <p className="text-sm font-medium">Nenhum lembrete vencido</p>
                     </div>
                   ) : (
-                    <div className="divide-y divide-border">
+                    <div>{renderDiaryEntries()}</div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="alerts" className="m-0">
+                  {systemAlerts.length === 0 ? (
+                    <div className="p-10 text-center text-muted-foreground">
+                      <Bell className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                      <p className="text-sm font-medium">Nenhum alerta</p>
+                    </div>
+                  ) : (
+                    <div>
                       {systemAlerts.map((alert) => (
-                        <div
-                          key={alert.id}
-                          className="p-3 hover:bg-accent/50 transition-colors"
-                        >
+                        <div key={alert.id} className="p-3.5 hover:bg-accent/50 transition-colors border-b border-border/30 last:border-0">
                           <div className="flex items-start gap-3">
                             {getAlertIcon(alert.type)}
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline" className={`text-[10px] ${getAlertBadgeColor(alert.type)}`}>
-                                  {alert.type === 'deleted' ? 'Excluído' : 'Finalizado'}
-                                </Badge>
-                              </div>
-                              <p className="text-sm mt-1 line-clamp-2">{alert.message}</p>
+                              <Badge variant="outline" className="text-[10px] mb-1">
+                                {alert.type === 'deleted' ? 'Excluído' : 'Finalizado'}
+                              </Badge>
+                              <p className="text-sm line-clamp-2">{alert.message}</p>
                               <p className="text-xs text-muted-foreground mt-1">
                                 {format(new Date(alert.timestamp), "dd/MM 'às' HH:mm", { locale: ptBR })}
-                                {alert.userEmail && ` • ${alert.userEmail}`}
                               </p>
                             </div>
                           </div>
@@ -346,22 +322,6 @@ const NotificationBell: React.FC = () => {
                 </TabsContent>
               </ScrollArea>
             </Tabs>
-
-            {activeOverdueTickets.length > 0 && (
-              <div className="p-2 border-t border-border">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full text-xs"
-                  onClick={() => {
-                    setIsOpen(false);
-                    navigate('/chamados?filter=overdue');
-                  }}
-                >
-                  Ver todos os chamados vencidos
-                </Button>
-              </div>
-            )}
           </motion.div>
         )}
       </AnimatePresence>

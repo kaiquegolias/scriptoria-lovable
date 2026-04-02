@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
-import { differenceInDays } from 'date-fns';
+import { differenceInDays, differenceInHours, isToday, isPast, parseISO } from 'date-fns';
 
 export interface OverdueTicket {
   id: string;
@@ -10,6 +10,15 @@ export interface OverdueTicket {
   nivel: string;
   estruturante: string;
   diasAtraso: number;
+}
+
+export interface OverdueDiaryEntry {
+  id: string;
+  title: string;
+  dueDate: string;
+  dueTime: string | null;
+  diasAtraso: number;
+  isDueToday: boolean;
 }
 
 export interface SystemAlert {
@@ -25,6 +34,7 @@ export interface SystemAlert {
 
 export function useNotifications() {
   const [overdueTickets, setOverdueTickets] = useState<OverdueTicket[]>([]);
+  const [overdueDiaryEntries, setOverdueDiaryEntries] = useState<OverdueDiaryEntry[]>([]);
   const [systemAlerts, setSystemAlerts] = useState<SystemAlert[]>([]);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const [dismissedAlertIds, setDismissedAlertIds] = useState<Set<string>>(new Set());
@@ -37,16 +47,17 @@ export function useNotifications() {
     try {
       const now = new Date().toISOString();
 
-      const { data: tickets, error: ticketsError } = await supabase
+      const { data: tickets, error } = await supabase
         .from('chamados')
         .select('id, titulo, data_limite, nivel, estruturante')
         .lt('data_limite', now)
         .neq('status', 'resolvido')
+        .neq('status', 'excluido')
         .not('data_limite', 'is', null)
         .order('data_limite', { ascending: true })
         .limit(50);
 
-      if (ticketsError) throw ticketsError;
+      if (error) throw error;
 
       return (tickets || []).map(ticket => ({
         id: ticket.id,
@@ -62,11 +73,54 @@ export function useNotifications() {
     }
   }, [user]);
 
+  const fetchOverdueDiaryEntries = useCallback(async () => {
+    if (!user) return [];
+
+    try {
+      const { data, error } = await supabase
+        .from('diary_entries')
+        .select('id, title, due_date, due_time, completed')
+        .eq('completed', false)
+        .not('due_date', 'is', null)
+        .order('due_date', { ascending: true });
+
+      if (error) throw error;
+
+      const now = new Date();
+      const entries: OverdueDiaryEntry[] = [];
+
+      for (const entry of data || []) {
+        const dueDate = parseISO(entry.due_date!);
+        const dueDateWithTime = entry.due_time
+          ? parseISO(`${entry.due_date}T${entry.due_time}`)
+          : dueDate;
+
+        const dueToday = isToday(dueDate);
+        const overdue = isPast(dueDateWithTime) && !dueToday;
+        
+        if (overdue || dueToday) {
+          entries.push({
+            id: entry.id,
+            title: entry.title,
+            dueDate: entry.due_date!,
+            dueTime: entry.due_time,
+            diasAtraso: overdue ? differenceInDays(now, dueDate) : 0,
+            isDueToday: dueToday,
+          });
+        }
+      }
+
+      return entries;
+    } catch (error) {
+      console.error('Error fetching overdue diary entries:', error);
+      return [];
+    }
+  }, [user]);
+
   const fetchSystemAlerts = useCallback(async () => {
     if (!user) return [];
 
     try {
-      // Fetch deleted chamados
       const { data: deletedLogs, error: deletedError } = await supabase
         .from('system_logs')
         .select('*')
@@ -76,7 +130,6 @@ export function useNotifications() {
 
       if (deletedError) throw deletedError;
 
-      // Fetch closed/finalized chamados
       const { data: closedLogs, error: closedError } = await supabase
         .from('system_logs')
         .select('*')
@@ -123,7 +176,6 @@ export function useNotifications() {
     if (!user) return { tickets: new Set<string>(), alerts: new Set<string>() };
 
     try {
-      // Fetch dismissed ticket notifications
       const { data: dismissedTickets, error: ticketsError } = await supabase
         .from('dismissed_notifications')
         .select('ticket_id')
@@ -131,7 +183,6 @@ export function useNotifications() {
 
       if (ticketsError) throw ticketsError;
 
-      // Fetch dismissed alert notifications
       const { data: dismissedAlerts, error: alertsError } = await supabase
         .from('dismissed_alerts')
         .select('alert_id')
@@ -152,6 +203,7 @@ export function useNotifications() {
   const fetchAllNotifications = useCallback(async () => {
     if (!user) {
       setOverdueTickets([]);
+      setOverdueDiaryEntries([]);
       setSystemAlerts([]);
       setLoading(false);
       return;
@@ -159,20 +211,22 @@ export function useNotifications() {
 
     setLoading(true);
     try {
-      const [overdue, alerts, dismissed] = await Promise.all([
+      const [overdue, diary, alerts, dismissed] = await Promise.all([
         fetchOverdueTickets(),
+        fetchOverdueDiaryEntries(),
         fetchSystemAlerts(),
         fetchDismissedIds(),
       ]);
 
       setOverdueTickets(overdue);
+      setOverdueDiaryEntries(diary);
       setSystemAlerts(alerts);
       setDismissedIds(dismissed.tickets);
       setDismissedAlertIds(dismissed.alerts);
     } finally {
       setLoading(false);
     }
-  }, [user, fetchOverdueTickets, fetchSystemAlerts, fetchDismissedIds]);
+  }, [user, fetchOverdueTickets, fetchOverdueDiaryEntries, fetchSystemAlerts, fetchDismissedIds]);
 
   const dismissNotification = useCallback(async (ticketId: string) => {
     if (!user) return;
@@ -199,7 +253,6 @@ export function useNotifications() {
     if (!user) return;
 
     try {
-      // Dismiss all overdue tickets
       const ticketIds = overdueTickets.map(t => t.id);
       
       for (const ticketId of ticketIds) {
@@ -209,7 +262,6 @@ export function useNotifications() {
         }, { onConflict: 'user_id,ticket_id' });
       }
 
-      // Dismiss all system alerts
       const alertIds = systemAlerts.map(a => a.id);
       
       for (const alertId of alertIds) {
@@ -219,14 +271,12 @@ export function useNotifications() {
         }, { onConflict: 'user_id,alert_id' });
       }
 
-      // Log the bulk dismiss action
       await supabase.from('notifications_log').insert({
         user_id: user.id,
         ticket_id: null,
         action: 'dismissed_all',
       });
 
-      // Update local state with all dismissed IDs
       setDismissedIds(prev => new Set([...prev, ...ticketIds]));
       setDismissedAlertIds(prev => new Set([...prev, ...alertIds]));
     } catch (error) {
@@ -262,7 +312,6 @@ export function useNotifications() {
     }
   }, [user]);
 
-  // Subscribe to realtime changes for system alerts
   useEffect(() => {
     if (!user) return;
 
@@ -309,7 +358,6 @@ export function useNotifications() {
       )
       .subscribe();
 
-    // Refresh every 5 minutes
     const interval = setInterval(fetchAllNotifications, 5 * 60 * 1000);
 
     return () => {
@@ -321,15 +369,18 @@ export function useNotifications() {
   const activeOverdueTickets = overdueTickets.filter(t => !dismissedIds.has(t.id));
   const activeSystemAlerts = systemAlerts.filter(a => !dismissedAlertIds.has(a.id));
   const overdueCount = activeOverdueTickets.length;
+  const diaryCount = overdueDiaryEntries.length;
   const alertsCount = activeSystemAlerts.length;
-  const totalCount = overdueCount + alertsCount;
+  const totalCount = overdueCount + alertsCount + diaryCount;
   const displayCount = totalCount > 99 ? '99+' : totalCount.toString();
 
   return {
     overdueTickets,
     activeOverdueTickets,
+    overdueDiaryEntries,
     systemAlerts: activeSystemAlerts,
     overdueCount,
+    diaryCount,
     alertsCount,
     totalCount,
     displayCount,

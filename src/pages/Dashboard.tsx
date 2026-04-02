@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { FileText, PhoneCall, CheckCircle, Clock, AlertCircle, BarChart3, Activity } from 'lucide-react';
+import { FileText, PhoneCall, CheckCircle, Clock, Calendar, BarChart3, Sparkles, BookOpen, Trash2, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import StatCard from '@/components/dashboard/StatCard';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -15,7 +15,8 @@ const Dashboard = () => {
     chamadosToday: 0,
     resolvedToday: 0,
     chamadosByEstruturante: {} as Record<string, number>,
-    chamadosByStatus: {} as Record<string, number>
+    chamadosByStatus: {} as Record<string, number>,
+    diaryPendingCount: 0,
   });
 
   useEffect(() => {
@@ -24,57 +25,55 @@ const Dashboard = () => {
 
       setLoading(true);
       try {
-        // Get scripts count
-        const { data: scripts, error: scriptsError } = await supabase
+        const { data: scripts } = await supabase
           .from('scripts')
           .select('id', { count: 'exact' });
         
-        if (scriptsError) throw scriptsError;
-        
-        // Get chamados counts
-        const { data: chamados, error: chamadosError } = await supabase
+        const { data: chamados } = await supabase
           .from('chamados')
           .select('*');
         
-        if (chamadosError) throw chamadosError;
+        const { data: diary } = await supabase
+          .from('diary_entries')
+          .select('id')
+          .eq('completed', false);
         
-        // Process chamados data
-        const chamadosOpen = chamados.filter(c => c.status !== 'resolvido');
-        const chamadosClosed = chamados.filter(c => c.status === 'resolvido');
-        
-        // Get today's chamados
-        const today = new Date().toISOString().split('T')[0];
-        const chamadosToday = chamados.filter(c => 
-          new Date(c.data_criacao).toISOString().split('T')[0] === today
-        ).length;
-        
-        // Get resolved today
-        const resolvedToday = chamados.filter(c => 
-          c.status === 'resolvido' && 
-          new Date(c.data_atualizacao).toISOString().split('T')[0] === today
-        ).length;
-        
-        // Count only open chamados by estruturante
-        const chamadosByEstruturante = chamadosOpen.reduce((acc, chamado) => {
-          acc[chamado.estruturante] = (acc[chamado.estruturante] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>);
-        
-        // Count by status
-        const chamadosByStatus = chamados.reduce((acc, chamado) => {
-          acc[chamado.status] = (acc[chamado.status] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>);
-        
-        setStats({
-          scriptsCount: scripts?.length || 0,
-          chamadosOpenCount: chamadosOpen.length,
-          chamadosClosedCount: chamadosClosed.length,
-          chamadosToday,
-          resolvedToday,
-          chamadosByEstruturante,
-          chamadosByStatus
-        });
+        if (chamados) {
+          const activeChamados = chamados.filter(c => c.status !== 'excluido');
+          const chamadosOpen = activeChamados.filter(c => c.status !== 'resolvido');
+          const chamadosClosed = activeChamados.filter(c => c.status === 'resolvido');
+          
+          const today = new Date().toISOString().split('T')[0];
+          const chamadosToday = activeChamados.filter(c => 
+            new Date(c.data_criacao).toISOString().split('T')[0] === today
+          ).length;
+          
+          const resolvedToday = activeChamados.filter(c => 
+            c.status === 'resolvido' && 
+            new Date(c.data_atualizacao).toISOString().split('T')[0] === today
+          ).length;
+          
+          const chamadosByEstruturante = chamadosOpen.reduce((acc, chamado) => {
+            acc[chamado.estruturante] = (acc[chamado.estruturante] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>);
+          
+          const chamadosByStatus = activeChamados.reduce((acc, chamado) => {
+            acc[chamado.status] = (acc[chamado.status] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>);
+          
+          setStats({
+            scriptsCount: scripts?.length || 0,
+            chamadosOpenCount: chamadosOpen.length,
+            chamadosClosedCount: chamadosClosed.length,
+            chamadosToday,
+            resolvedToday,
+            chamadosByEstruturante,
+            chamadosByStatus,
+            diaryPendingCount: diary?.length || 0,
+          });
+        }
       } catch (error) {
         console.error('Error fetching dashboard stats:', error);
       } finally {
@@ -85,7 +84,6 @@ const Dashboard = () => {
     fetchStats();
   }, [user]);
 
-  // Get display name from user email or use a default greeting
   const userDisplayName = user?.email?.split('@')[0] || 'usuário';
 
   if (!user) {
@@ -99,190 +97,162 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8 animate-fade-in text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
-        <p className="mt-4 text-lg font-medium">Carregando dashboard...</p>
+      <div className="container mx-auto px-4 py-16 animate-fade-in text-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-primary mx-auto"></div>
+        <p className="mt-4 text-sm text-muted-foreground">Carregando dashboard...</p>
       </div>
     );
   }
 
+  const statCards = [
+    { title: 'Chamados Abertos', value: stats.chamadosOpenCount, icon: PhoneCall, color: 'text-warning', bg: 'bg-warning/10' },
+    { title: 'Encerrados', value: stats.chamadosClosedCount, icon: CheckCircle, color: 'text-success', bg: 'bg-success/10' },
+    { title: 'Resolvidos Hoje', value: stats.resolvedToday, icon: Clock, color: 'text-primary', bg: 'bg-primary/10', sub: `${stats.chamadosToday} novos hoje` },
+    { title: 'Scripts', value: stats.scriptsCount, icon: FileText, color: 'text-accent-foreground', bg: 'bg-accent' },
+  ];
+
+  const quickLinks = [
+    { to: '/chamados', title: 'Chamados', desc: 'Gerenciar chamados ativos', icon: PhoneCall, color: 'text-primary', bg: 'bg-primary/10' },
+    { to: '/scripts', title: 'Scripts', desc: 'Seus scripts e respostas', icon: FileText, color: 'text-accent-foreground', bg: 'bg-accent' },
+    { to: '/diario', title: 'Diário', desc: `${stats.diaryPendingCount} tarefas pendentes`, icon: Calendar, color: 'text-warning', bg: 'bg-warning/10' },
+    { to: '/chamados-encerrados', title: 'Encerrados', desc: 'Histórico de finalizados', icon: CheckCircle, color: 'text-success', bg: 'bg-success/10' },
+    { to: '/cortana', title: 'Cortana', desc: 'Assistente inteligente', icon: Sparkles, color: 'text-primary', bg: 'bg-primary/10' },
+    { to: '/biblioteca', title: 'Biblioteca', desc: 'Base de conhecimento', icon: BookOpen, color: 'text-accent-foreground', bg: 'bg-accent' },
+  ];
+
   return (
     <div className="container mx-auto px-4 py-8 animate-fade-in">
-      <h1 className="text-2xl font-bold mb-2">Dashboard</h1>
-      <p className="text-foreground/70 mb-8">
-        Bem-vindo, {userDisplayName}. Veja um resumo das suas atividades.
-      </p>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard
-          title="Total de Scripts"
-          value={stats.scriptsCount}
-          icon={<FileText size={24} />}
-          color="primary"
-        />
-        
-        <StatCard
-          title="Chamados em Aberto"
-          value={stats.chamadosOpenCount}
-          description="Aguardando resolução"
-          icon={<PhoneCall size={24} />}
-          color="warning"
-        />
-        
-        <StatCard
-          title="Chamados Encerrados"
-          value={stats.chamadosClosedCount}
-          description="Total finalizado"
-          icon={<CheckCircle size={24} />}
-          color="success"
-        />
-        
-        <StatCard
-          title="Resolvidos Hoje"
-          value={stats.resolvedToday}
-          description={`De ${stats.chamadosToday} novos chamados hoje`}
-          icon={<Clock size={24} />}
-          color="info"
-        />
+      {/* Header */}
+      <div className="mb-8">
+        <motion.h1
+          className="text-3xl font-bold tracking-tight"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          Olá, {userDisplayName} 👋
+        </motion.h1>
+        <p className="text-muted-foreground mt-1">Veja um resumo das suas atividades.</p>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-6">
-        <div className="glass rounded-xl p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-semibold">Chamados por Estruturante</h2>
-            <Link to="/chamados" className="text-sm text-primary hover:underline">
-              Ver todos →
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {statCards.map((card, i) => (
+          <motion.div
+            key={card.title}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.06 }}
+            className="bg-card border border-border/60 rounded-2xl p-5 hover:shadow-lg transition-all duration-300"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className={`p-2.5 rounded-xl ${card.bg}`}>
+                <card.icon size={20} className={card.color} />
+              </div>
+            </div>
+            <p className="text-3xl font-bold">{card.value}</p>
+            <p className="text-sm text-muted-foreground mt-1">{card.title}</p>
+            {card.sub && <p className="text-xs text-muted-foreground/70 mt-0.5">{card.sub}</p>}
+          </motion.div>
+        ))}
+      </div>
+      
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="bg-card border border-border/60 rounded-2xl p-6"
+        >
+          <div className="flex justify-between items-center mb-5">
+            <h2 className="text-base font-semibold">Por Estruturante</h2>
+            <Link to="/chamados" className="text-xs text-primary hover:underline flex items-center gap-1">
+              Ver todos <ArrowRight size={12} />
             </Link>
           </div>
           
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-3 h-3 rounded-full bg-estruturante-pncp mr-2"></div>
-                <span className="text-sm">PNCP</span>
-              </div>
-              <span className="font-medium">{stats.chamadosByEstruturante['PNCP'] || 0}</span>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-3 h-3 rounded-full bg-estruturante-pen mr-2"></div>
-                <span className="text-sm">PEN</span>
-              </div>
-              <span className="font-medium">{stats.chamadosByEstruturante['PEN'] || 0}</span>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-3 h-3 rounded-full bg-estruturante-other mr-2"></div>
-                <span className="text-sm">Outros</span>
-              </div>
-              <span className="font-medium">{stats.chamadosByEstruturante['Outros'] || 0}</span>
-            </div>
+            {[
+              { name: 'PNCP', color: 'bg-estruturante-pncp', count: stats.chamadosByEstruturante['PNCP'] || 0 },
+              { name: 'PEN', color: 'bg-estruturante-pen', count: stats.chamadosByEstruturante['PEN'] || 0 },
+              { name: 'Outros', color: 'bg-estruturante-other', count: stats.chamadosByEstruturante['Outros'] || 0 },
+            ].map(item => {
+              const total = stats.chamadosOpenCount || 1;
+              const pct = Math.round((item.count / total) * 100);
+              return (
+                <div key={item.name}>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-sm font-medium">{item.name}</span>
+                    <span className="text-sm text-muted-foreground">{item.count}</span>
+                  </div>
+                  <div className="h-2 bg-accent rounded-full overflow-hidden">
+                    <div className={`h-full ${item.color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </div>
+        </motion.div>
         
-        <div className="glass rounded-xl p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-semibold">Status dos Chamados</h2>
-            <Link to="/chamados" className="text-sm text-primary hover:underline">
-              Ver detalhes →
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-card border border-border/60 rounded-2xl p-6"
+        >
+          <div className="flex justify-between items-center mb-5">
+            <h2 className="text-base font-semibold">Status dos Chamados</h2>
+            <Link to="/chamados" className="text-xs text-primary hover:underline flex items-center gap-1">
+              Detalhes <ArrowRight size={12} />
             </Link>
           </div>
           
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-3 h-3 rounded-full bg-status-info mr-2"></div>
-                <span className="text-sm">Agendados</span>
+          <div className="space-y-3">
+            {[
+              { label: 'Agendados', key: 'agendados', color: 'bg-status-info' },
+              { label: 'Agendados PLANNER', key: 'agendados_planner', color: 'bg-purple-500' },
+              { label: 'Aguardando devolutiva', key: 'agendados_aguardando', color: 'bg-yellow-500' },
+              { label: 'Em Andamento', key: 'em_andamento', color: 'bg-status-warning' },
+              { label: 'Resolvidos', key: 'resolvido', color: 'bg-status-success' },
+            ].map(item => (
+              <div key={item.key} className="flex items-center justify-between py-1">
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-2.5 h-2.5 rounded-full ${item.color}`}></div>
+                  <span className="text-sm">{item.label}</span>
+                </div>
+                <span className="font-semibold text-sm tabular-nums">
+                  {stats.chamadosByStatus[item.key] || 0}
+                </span>
               </div>
-              <span className="font-medium">
-                {stats.chamadosByStatus['agendados'] || 0}
-              </span>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-3 h-3 rounded-full bg-purple-500 mr-2"></div>
-                <span className="text-sm">Agendados PLANNER</span>
-              </div>
-              <span className="font-medium">
-                {stats.chamadosByStatus['agendados_planner'] || 0}
-              </span>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-3 h-3 rounded-full bg-yellow-500 mr-2"></div>
-                <span className="text-sm">Aguardando devolutiva</span>
-              </div>
-              <span className="font-medium">
-                {stats.chamadosByStatus['agendados_aguardando'] || 0}
-              </span>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-3 h-3 rounded-full bg-status-warning mr-2"></div>
-                <span className="text-sm">Em Andamento</span>
-              </div>
-              <span className="font-medium">
-                {stats.chamadosByStatus['em_andamento'] || 0}
-              </span>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-3 h-3 rounded-full bg-status-success mr-2"></div>
-                <span className="text-sm">Resolvidos</span>
-              </div>
-              <span className="font-medium">
-                {stats.chamadosByStatus['resolvido'] || 0}
-              </span>
-            </div>
+            ))}
           </div>
-        </div>
+        </motion.div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Link 
-          to="/scripts" 
-          className="glass p-6 rounded-xl text-center hover-lift flex flex-col items-center justify-center gap-3"
-        >
-          <div className="bg-primary/10 p-3 rounded-full">
-            <FileText size={28} className="text-primary" />
-          </div>
-          <h3 className="text-lg font-medium">Gerenciar Scripts</h3>
-          <p className="text-sm text-foreground/70">
-            Crie e organize seus scripts e respostas padrão
-          </p>
-        </Link>
-        
-        <Link 
-          to="/chamados" 
-          className="glass p-6 rounded-xl text-center hover-lift flex flex-col items-center justify-center gap-3"
-        >
-          <div className="bg-primary/10 p-3 rounded-full">
-            <PhoneCall size={28} className="text-primary" />
-          </div>
-          <h3 className="text-lg font-medium">Gerenciar Chamados</h3>
-          <p className="text-sm text-foreground/70">
-            Acompanhe e atualize o status dos seus chamados
-          </p>
-        </Link>
-        
-        <Link 
-          to="/chamados-encerrados" 
-          className="glass p-6 rounded-xl text-center hover-lift flex flex-col items-center justify-center gap-3"
-        >
-          <div className="bg-primary/10 p-3 rounded-full">
-            <CheckCircle size={28} className="text-primary" />
-          </div>
-          <h3 className="text-lg font-medium">Chamados Encerrados</h3>
-          <p className="text-sm text-foreground/70">
-            Visualize o histórico de chamados finalizados
-          </p>
-        </Link>
+      {/* Quick Links */}
+      <h2 className="text-base font-semibold mb-4">Acesso Rápido</h2>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {quickLinks.map((link, i) => (
+          <motion.div
+            key={link.to}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 + i * 0.04 }}
+          >
+            <Link
+              to={link.to}
+              className="bg-card border border-border/60 rounded-2xl p-4 text-center hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 flex flex-col items-center gap-2.5 h-full"
+            >
+              <div className={`p-2.5 rounded-xl ${link.bg}`}>
+                <link.icon size={20} className={link.color} />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold">{link.title}</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{link.desc}</p>
+              </div>
+            </Link>
+          </motion.div>
+        ))}
       </div>
     </div>
   );

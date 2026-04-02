@@ -2,15 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, isToday, isPast, isTomorrow, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Calendar, CheckCircle2, Circle, Trash2, Edit2, X, Link2, Save } from 'lucide-react';
+import { Plus, Calendar, CheckCircle2, Circle, Trash2, Edit2, X, Link2, Save, Clock, AlertTriangle, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Chamado } from '@/components/chamados/ChamadoCard';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface DiaryEntry {
   id: string;
@@ -31,7 +32,6 @@ const DiarioAnalista = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingEntry, setEditingEntry] = useState<DiaryEntry | null>(null);
 
-  // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -168,6 +168,7 @@ const DiarioAnalista = () => {
         .eq('id', entry.id);
       if (error) throw error;
       setEntries(entries.map(e => e.id === entry.id ? { ...e, completed: !e.completed } : e));
+      toast.success(entry.completed ? 'Tarefa reaberta!' : 'Tarefa concluída! 🎉');
     } catch (err) {
       toast.error('Erro ao atualizar tarefa.');
     }
@@ -200,6 +201,25 @@ const DiarioAnalista = () => {
     return c?.titulo || 'Chamado não encontrado';
   };
 
+  const getEntryStatus = (entry: DiaryEntry) => {
+    if (entry.completed) return 'completed';
+    if (!entry.dueDate) return 'normal';
+    const due = parseISO(entry.dueDate);
+    if (isToday(due)) return 'today';
+    if (isTomorrow(due)) return 'tomorrow';
+    if (isPast(due)) return 'overdue';
+    return 'normal';
+  };
+
+  const getStatusStyles = (status: string) => {
+    switch (status) {
+      case 'overdue': return 'border-l-4 border-l-destructive bg-destructive/5';
+      case 'today': return 'border-l-4 border-l-warning bg-warning/5';
+      case 'tomorrow': return 'border-l-4 border-l-primary bg-primary/5';
+      default: return 'border-l-4 border-l-transparent';
+    }
+  };
+
   if (!user) {
     return (
       <div className="text-center py-12">
@@ -210,66 +230,175 @@ const DiarioAnalista = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 animate-fade-in">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-start mb-8">
         <div>
-          <h1 className="text-2xl font-bold">Diário do Analista</h1>
-          <p className="text-foreground/70">Organize suas tarefas e compromissos diários.</p>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-primary/10">
+              <Calendar className="h-6 w-6 text-primary" />
+            </div>
+            Diário do Analista
+          </h1>
+          <p className="text-muted-foreground mt-2">Organize suas tarefas e compromissos.</p>
         </div>
-        <Button onClick={() => { resetForm(); setShowForm(true); }} className="flex items-center gap-2">
-          <Plus size={18} />
+        <Button onClick={() => { resetForm(); setShowForm(true); }} className="rounded-xl shadow-sm">
+          <Plus size={18} className="mr-2" />
           Nova Tarefa
         </Button>
       </div>
 
+      {/* Stats */}
+      {entries.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+          <div className="bg-card border border-border/60 rounded-xl p-4 text-center">
+            <p className="text-2xl font-bold text-foreground">{pendentes.length}</p>
+            <p className="text-xs text-muted-foreground mt-1">Pendentes</p>
+          </div>
+          <div className="bg-card border border-border/60 rounded-xl p-4 text-center">
+            <p className="text-2xl font-bold text-success">{concluidas.length}</p>
+            <p className="text-xs text-muted-foreground mt-1">Concluídas</p>
+          </div>
+          <div className="bg-card border border-border/60 rounded-xl p-4 text-center">
+            <p className="text-2xl font-bold text-warning">{pendentes.filter(e => getEntryStatus(e) === 'today').length}</p>
+            <p className="text-xs text-muted-foreground mt-1">Para Hoje</p>
+          </div>
+          <div className="bg-card border border-border/60 rounded-xl p-4 text-center">
+            <p className="text-2xl font-bold text-destructive">{pendentes.filter(e => getEntryStatus(e) === 'overdue').length}</p>
+            <p className="text-xs text-muted-foreground mt-1">Vencidas</p>
+          </div>
+        </div>
+      )}
+
       {loading ? (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto" />
+        <div className="text-center py-16">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-primary mx-auto" />
+          <p className="mt-4 text-sm text-muted-foreground">Carregando...</p>
         </div>
       ) : entries.length === 0 ? (
-        <div className="text-center py-16">
-          <Calendar className="mx-auto h-16 w-16 text-muted-foreground/30 mb-4" />
+        <div className="text-center py-20">
+          <div className="p-5 rounded-3xl bg-accent/50 inline-block mb-4">
+            <Calendar className="h-12 w-12 text-muted-foreground/30" />
+          </div>
           <p className="text-lg font-medium text-muted-foreground">Nenhuma tarefa registrada</p>
-          <p className="text-sm text-muted-foreground/70 mt-1">Comece adicionando sua primeira tarefa.</p>
+          <p className="text-sm text-muted-foreground/60 mt-1">Comece adicionando sua primeira tarefa.</p>
+          <Button className="mt-6 rounded-xl" onClick={() => { resetForm(); setShowForm(true); }}>
+            <Plus size={16} className="mr-2" />
+            Criar primeira tarefa
+          </Button>
         </div>
       ) : (
         <div className="space-y-8">
           {pendentes.length > 0 && (
             <div>
-              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Circle size={18} className="text-primary" />
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
+                <Circle size={14} className="text-primary" />
                 Pendentes ({pendentes.length})
               </h2>
-              <div className="space-y-3">
-                {pendentes.map(entry => (
-                  <EntryCard
-                    key={entry.id}
-                    entry={entry}
-                    onToggle={toggleComplete}
-                    onEdit={openEditForm}
-                    onDelete={deleteEntry}
-                    getChamadoTitle={getChamadoTitle}
-                  />
-                ))}
+              <div className="space-y-2">
+                <AnimatePresence>
+                  {pendentes.map((entry, i) => {
+                    const status = getEntryStatus(entry);
+                    return (
+                      <motion.div
+                        key={entry.id}
+                        initial={{ opacity: 0, x: -12 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 12 }}
+                        transition={{ delay: i * 0.03 }}
+                        className={`bg-card border border-border/60 rounded-xl p-4 flex items-start gap-3 hover:shadow-md transition-all duration-200 ${getStatusStyles(status)}`}
+                      >
+                        <button onClick={() => toggleComplete(entry)} className="mt-0.5 shrink-0 group">
+                          <Circle size={22} className="text-muted-foreground group-hover:text-primary transition-colors" />
+                        </button>
+
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground">{entry.title}</p>
+                          {entry.description && (
+                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{entry.description}</p>
+                          )}
+                          <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                            {status === 'overdue' && (
+                              <Badge variant="destructive" className="text-xs gap-1">
+                                <AlertTriangle size={10} />
+                                Vencida
+                              </Badge>
+                            )}
+                            {status === 'today' && (
+                              <Badge className="text-xs bg-warning text-warning-foreground gap-1">
+                                <Clock size={10} />
+                                Hoje
+                              </Badge>
+                            )}
+                            {status === 'tomorrow' && (
+                              <Badge variant="outline" className="text-xs gap-1 border-primary/30 text-primary">
+                                <Sparkles size={10} />
+                                Amanhã
+                              </Badge>
+                            )}
+                            {entry.dueDate && (
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Calendar size={10} />
+                                {format(parseISO(entry.dueDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                                {entry.dueTime && ` às ${entry.dueTime}`}
+                              </span>
+                            )}
+                            {entry.chamadoIds.map(id => (
+                              <Badge key={id} variant="outline" className="text-xs gap-1 max-w-[180px]">
+                                <Link2 size={10} />
+                                <span className="truncate">{getChamadoTitle(id).substring(0, 25)}</span>
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          <button onClick={() => openEditForm(entry)} className="p-2 rounded-lg hover:bg-accent transition-colors">
+                            <Edit2 size={14} className="text-muted-foreground" />
+                          </button>
+                          <button onClick={() => deleteEntry(entry.id)} className="p-2 rounded-lg hover:bg-destructive/10 transition-colors">
+                            <Trash2 size={14} className="text-muted-foreground hover:text-destructive" />
+                          </button>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
               </div>
             </div>
           )}
 
           {concluidas.length > 0 && (
             <div>
-              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-muted-foreground">
-                <CheckCircle2 size={18} />
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
+                <CheckCircle2 size={14} className="text-success" />
                 Concluídas ({concluidas.length})
               </h2>
-              <div className="space-y-3 opacity-70">
-                {concluidas.map(entry => (
-                  <EntryCard
+              <div className="space-y-2">
+                {concluidas.map((entry, i) => (
+                  <motion.div
                     key={entry.id}
-                    entry={entry}
-                    onToggle={toggleComplete}
-                    onEdit={openEditForm}
-                    onDelete={deleteEntry}
-                    getChamadoTitle={getChamadoTitle}
-                  />
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: i * 0.03 }}
+                    className="bg-card/50 border border-border/40 rounded-xl p-4 flex items-start gap-3 opacity-60 hover:opacity-80 transition-all"
+                  >
+                    <button onClick={() => toggleComplete(entry)} className="mt-0.5 shrink-0">
+                      <CheckCircle2 size={22} className="text-success" />
+                    </button>
+
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium line-through text-muted-foreground">{entry.title}</p>
+                      {entry.dueDate && (
+                        <span className="text-xs text-muted-foreground/70 flex items-center gap-1 mt-1">
+                          <Calendar size={10} />
+                          {format(parseISO(entry.dueDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                        </span>
+                      )}
+                    </div>
+
+                    <button onClick={() => deleteEntry(entry.id)} className="p-2 rounded-lg hover:bg-destructive/10 transition-colors shrink-0">
+                      <Trash2 size={14} className="text-muted-foreground" />
+                    </button>
+                  </motion.div>
                 ))}
               </div>
             </div>
@@ -279,49 +408,49 @@ const DiarioAnalista = () => {
 
       {/* Form Dialog */}
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) resetForm(); }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg rounded-2xl">
           <DialogHeader>
-            <DialogTitle>{editingEntry ? 'Editar Tarefa' : 'Nova Tarefa'}</DialogTitle>
+            <DialogTitle className="text-xl">{editingEntry ? 'Editar Tarefa' : 'Nova Tarefa'}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 mt-2">
             <div>
-              <label className="text-sm font-medium mb-1 block">Título *</label>
+              <label className="text-sm font-medium mb-1.5 block">Título *</label>
               <Input
                 placeholder="Ex: Subir chamado X na segunda"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                className="rounded-xl"
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">Descrição</label>
+              <label className="text-sm font-medium mb-1.5 block">Descrição</label>
               <Textarea
                 placeholder="Detalhes da tarefa..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="min-h-[80px]"
+                className="min-h-[80px] rounded-xl"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium mb-1 block">Data</label>
-                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                <label className="text-sm font-medium mb-1.5 block">Data</label>
+                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="rounded-xl" />
               </div>
               <div>
-                <label className="text-sm font-medium mb-1 block">Horário</label>
-                <Input type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} />
+                <label className="text-sm font-medium mb-1.5 block">Horário</label>
+                <Input type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} className="rounded-xl" />
               </div>
             </div>
 
-            {/* Chamados linking */}
             <div>
-              <label className="text-sm font-medium mb-1 block flex items-center gap-2">
+              <label className="text-sm font-medium mb-1.5 block flex items-center gap-2">
                 <Link2 size={14} />
                 Vincular Chamados
               </label>
               {selectedChamados.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
                   {selectedChamados.map(id => (
-                    <Badge key={id} variant="secondary" className="flex items-center gap-1">
+                    <Badge key={id} variant="secondary" className="flex items-center gap-1 rounded-lg">
                       {getChamadoTitle(id).substring(0, 30)}
                       <button onClick={() => setSelectedChamados(selectedChamados.filter(c => c !== id))}>
                         <X size={12} />
@@ -334,13 +463,14 @@ const DiarioAnalista = () => {
                 placeholder="Buscar chamado para vincular..."
                 value={chamadoSearch}
                 onChange={(e) => setChamadoSearch(e.target.value)}
+                className="rounded-xl"
               />
               {chamadoSearch && filteredChamados.length > 0 && (
-                <div className="mt-1 max-h-32 overflow-y-auto border rounded-md bg-background">
+                <div className="mt-1.5 max-h-32 overflow-y-auto border rounded-xl bg-card shadow-sm">
                   {filteredChamados.slice(0, 5).map(c => (
                     <button
                       key={c.id}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between"
+                      className="w-full text-left px-3.5 py-2.5 text-sm hover:bg-accent transition-colors flex items-center justify-between border-b border-border/30 last:border-0"
                       onClick={() => {
                         setSelectedChamados([...selectedChamados, c.id]);
                         setChamadoSearch('');
@@ -355,8 +485,8 @@ const DiarioAnalista = () => {
             </div>
 
             <div className="flex gap-3 pt-2">
-              <Button variant="outline" className="flex-1" onClick={resetForm}>Cancelar</Button>
-              <Button className="flex-1" onClick={handleSave}>
+              <Button variant="outline" className="flex-1 rounded-xl" onClick={resetForm}>Cancelar</Button>
+              <Button className="flex-1 rounded-xl" onClick={handleSave}>
                 <Save size={16} className="mr-2" />
                 {editingEntry ? 'Atualizar' : 'Criar'}
               </Button>
@@ -364,62 +494,6 @@ const DiarioAnalista = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-};
-
-// Entry Card component
-interface EntryCardProps {
-  entry: DiaryEntry;
-  onToggle: (entry: DiaryEntry) => void;
-  onEdit: (entry: DiaryEntry) => void;
-  onDelete: (id: string) => void;
-  getChamadoTitle: (id: string) => string;
-}
-
-const EntryCard: React.FC<EntryCardProps> = ({ entry, onToggle, onEdit, onDelete, getChamadoTitle }) => {
-  return (
-    <div className={`glass p-4 rounded-xl border border-border/50 flex items-start gap-3 ${entry.completed ? 'opacity-60' : ''}`}>
-      <button onClick={() => onToggle(entry)} className="mt-0.5 shrink-0">
-        {entry.completed ? (
-          <CheckCircle2 size={22} className="text-primary" />
-        ) : (
-          <Circle size={22} className="text-muted-foreground hover:text-primary transition-colors" />
-        )}
-      </button>
-
-      <div className="flex-1 min-w-0">
-        <p className={`font-medium ${entry.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-          {entry.title}
-        </p>
-        {entry.description && (
-          <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{entry.description}</p>
-        )}
-        <div className="flex flex-wrap items-center gap-2 mt-2">
-          {entry.dueDate && (
-            <Badge variant="outline" className="text-xs flex items-center gap-1">
-              <Calendar size={10} />
-              {format(new Date(entry.dueDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
-              {entry.dueTime && ` às ${entry.dueTime}`}
-            </Badge>
-          )}
-          {entry.chamadoIds.map(id => (
-            <Badge key={id} variant="secondary" className="text-xs flex items-center gap-1">
-              <Link2 size={10} />
-              {getChamadoTitle(id).substring(0, 25)}
-            </Badge>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex items-center gap-1 shrink-0">
-        <button onClick={() => onEdit(entry)} className="p-1.5 rounded-full hover:bg-accent transition-colors">
-          <Edit2 size={14} />
-        </button>
-        <button onClick={() => onDelete(entry.id)} className="p-1.5 rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors">
-          <Trash2 size={14} />
-        </button>
-      </div>
     </div>
   );
 };
