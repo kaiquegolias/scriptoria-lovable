@@ -6,6 +6,7 @@ const STATUS_LABELS: Record<string, string> = {
   agendados_aguardando: 'Aguardando devolutiva',
   em_andamento: 'Em Andamento',
   resolvido: 'Resolvido',
+  excluido: 'Excluído',
 };
 
 export function exportChamadosCSV(chamados: Chamado[], filename = 'chamados') {
@@ -26,10 +27,22 @@ export function exportChamadosCSV(chamados: Chamado[], filename = 'chamados') {
     'Data Limite',
   ];
 
-  const escapeCSV = (val: string) => {
-    if (!val) return '';
-    // Always wrap in quotes and escape inner quotes for safety
-    return `"${val.replace(/"/g, '""')}"`;
+  const escapeCSV = (val: unknown): string => {
+    const str = val == null ? '' : String(val);
+    if (!str) return '""';
+    // Replace line breaks with spaces to avoid breaking CSV rows
+    const cleaned = str.replace(/\r?\n/g, ' ').replace(/\r/g, ' ');
+    // Always wrap in quotes and escape inner quotes
+    return `"${cleaned.replace(/"/g, '""')}"`;
+  };
+
+  const formatDate = (dateStr: string | undefined | null): string => {
+    if (!dateStr) return '';
+    try {
+      return new Date(dateStr).toLocaleDateString('pt-BR');
+    } catch {
+      return '';
+    }
   };
 
   const rows = chamados.map((c) => [
@@ -44,17 +57,17 @@ export function exportChamadosCSV(chamados: Chamado[], filename = 'chamados') {
     c.penModulo || '',
     c.penPo || '',
     (c.links || []).join(' | '),
-    new Date(c.dataCriacao).toLocaleDateString('pt-BR'),
-    new Date(c.dataAtualizacao).toLocaleDateString('pt-BR'),
-    c.dataLimite ? new Date(c.dataLimite).toLocaleDateString('pt-BR') : '',
+    formatDate(c.dataCriacao),
+    formatDate(c.dataAtualizacao),
+    formatDate(c.dataLimite),
   ]);
 
   // Use semicolon separator for Excel/LibreOffice compatibility with pt-BR locale
   const csvContent =
     '\uFEFF' +
-    headers.map(escapeCSV).join(';') +
-    '\n' +
-    rows.map((row) => row.map(escapeCSV).join(';')).join('\n');
+    headers.map(h => escapeCSV(h)).join(';') +
+    '\r\n' +
+    rows.map((row) => row.map(escapeCSV).join(';')).join('\r\n');
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
