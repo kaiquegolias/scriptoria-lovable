@@ -287,17 +287,19 @@ export function useNotifications() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'system_logs' }, (payload) => {
         const newLog = payload.new as any;
         if (newLog.event_type === 'chamado_deleted') {
-          setSystemAlerts(prev => [{
-            id: newLog.id, type: 'deleted', title: 'Chamado Excluído',
+          const alert: SystemAlert = {
+            id: newLog.id, type: 'deleted' as const, title: 'Chamado Excluído',
             message: newLog.message, timestamp: newLog.timestamp,
-            severity: 'warning', entityId: newLog.entity_id, userEmail: newLog.user_email,
-          }, ...prev].slice(0, 30));
+            severity: 'warning' as const, entityId: newLog.entity_id, userEmail: newLog.user_email,
+          };
+          setSystemAlerts(prev => [alert, ...prev].slice(0, 30));
         } else if (newLog.event_type === 'chamado_status_changed' && newLog.message?.includes('encerrado')) {
-          setSystemAlerts(prev => [{
-            id: newLog.id, type: 'closed', title: 'Chamado Finalizado',
+          const alert: SystemAlert = {
+            id: newLog.id, type: 'closed' as const, title: 'Chamado Finalizado',
             message: newLog.message, timestamp: newLog.timestamp,
-            severity: 'info', entityId: newLog.entity_id, userEmail: newLog.user_email,
-          }, ...prev].slice(0, 30));
+            severity: 'info' as const, entityId: newLog.entity_id, userEmail: newLog.user_email,
+          };
+          setSystemAlerts(prev => [alert, ...prev].slice(0, 30));
         }
       })
       .subscribe();
