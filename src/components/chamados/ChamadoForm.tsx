@@ -26,7 +26,8 @@ const ASSUNTO_OPTIONS = [
   { value: 'registrar_problema_tecnico', label: 'Registrar problema técnico' },
   { value: 'registrar_melhoria', label: 'Registrar melhoria' },
   { value: 'registrar_reclamacao', label: 'Registrar reclamação' },
-  { value: 'solicitar_reuniao', label: 'Solicitar reunião com a equipe do PEN' }
+  { value: 'solicitar_reuniao', label: 'Solicitar reunião com a equipe do PEN' },
+  { value: 'solicitacoes', label: 'Solicitações' }
 ];
 
 interface ChamadoFormProps {

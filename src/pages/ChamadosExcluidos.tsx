@@ -89,6 +89,14 @@ const ChamadosExcluidos = () => {
 
       if (error) throw error;
 
+      // Add observation with restore justification
+      await supabase.from('ticket_followups').insert({
+        ticket_id: selectedChamado.id,
+        type: 'observation',
+        content: `🔄 Chamado restaurado da fila de excluídos.\n\n📋 Motivo da exclusão anterior: ${selectedChamado.motivoExclusao || 'Não informado'}\n📝 Justificativa da restauração: ${restoreJustification.trim()}`,
+        created_by: user!.id,
+      });
+
       // Log the restore action
       await supabase.from('system_logs').insert({
         event_type: 'chamado_status_changed' as any,
