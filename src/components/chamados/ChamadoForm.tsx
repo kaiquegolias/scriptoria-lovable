@@ -3,6 +3,7 @@ import { X, Plus, Trash, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { Chamado } from './ChamadoCard';
 import { PEN_PRODUCTS, getProductByValue, getModuleByValue, getProductByLabel } from '@/data/penProducts';
+import MexxPdfImport, { ExtractedMexxData } from './MexxPdfImport';
 
 interface ChamadoFormState {
   id?: string;
@@ -19,6 +20,25 @@ interface ChamadoFormState {
   penPo?: string;
   penPoSubstituto?: string;
   penRepresentanteTecnico?: string;
+  // MEXX import metadata
+  numeroChamado?: string;
+  usuarioNome?: string;
+  usuarioEmail?: string;
+  usuarioTelefone?: string;
+  usuarioCpf?: string;
+  prioridade?: string;
+  categoria?: string;
+  orgao?: string;
+  temAnexo?: boolean;
+  descricaoCompleta?: string;
+  slaAtendimento?: string;
+  slaSolucao?: string;
+  previsaoSolucao?: string | null;
+  timeAtendimento?: string;
+  tipoChamado?: string;
+  responsavel?: string;
+  dataAberturaPortal?: string | null;
+  camposPersonalizados?: Record<string, string>;
 }
 
 const ASSUNTO_OPTIONS = [
