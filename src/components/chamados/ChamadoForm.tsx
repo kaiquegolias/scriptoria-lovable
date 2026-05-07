@@ -353,6 +353,38 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
         
         <form onSubmit={handleSubmit} className="p-4">
           <div className="space-y-4">
+            {!isEditing && (
+              <MexxPdfImport onExtracted={handleMexxExtracted} />
+            )}
+
+            {(formState.numeroChamado || formState.usuarioNome || formState.orgao) && (
+              <div className="rounded-lg border bg-muted/30 p-3 text-xs space-y-1">
+                <div className="font-semibold text-sm flex items-center gap-2 mb-1">
+                  📋 Dados importados do MEXX
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                  {formState.numeroChamado && <div><span className="text-muted-foreground">Nº:</span> <b>{formState.numeroChamado}</b></div>}
+                  {formState.prioridade && <div><span className="text-muted-foreground">Prioridade:</span> {formState.prioridade}</div>}
+                  {formState.usuarioNome && <div className="col-span-2"><span className="text-muted-foreground">Solicitante:</span> {formState.usuarioNome}</div>}
+                  {formState.usuarioEmail && <div className="col-span-2"><span className="text-muted-foreground">E-mail:</span> {formState.usuarioEmail}</div>}
+                  {formState.orgao && <div><span className="text-muted-foreground">Órgão:</span> {formState.orgao}</div>}
+                  {formState.categoria && <div className="col-span-2"><span className="text-muted-foreground">Categoria:</span> {formState.categoria}</div>}
+                  {formState.responsavel && <div className="col-span-2"><span className="text-muted-foreground">Responsável:</span> {formState.responsavel}</div>}
+                  {typeof formState.temAnexo === 'boolean' && <div><span className="text-muted-foreground">Anexo:</span> {formState.temAnexo ? 'Sim' : 'Não'}</div>}
+                </div>
+                {formState.camposPersonalizados && Object.keys(formState.camposPersonalizados).length > 0 && (
+                  <div className="mt-2 pt-2 border-t">
+                    <div className="font-medium mb-1">Campos personalizados:</div>
+                    <div className="grid grid-cols-2 gap-x-4">
+                      {Object.entries(formState.camposPersonalizados).map(([k, v]) => (
+                        <div key={k}><span className="text-muted-foreground">{k}:</span> {v}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div>
               <label htmlFor="titulo" className="block text-sm font-medium mb-1">
                 Título*
