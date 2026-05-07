@@ -24,6 +24,25 @@ export interface Chamado {
   penPo?: string;
   penPoSubstituto?: string;
   penRepresentanteTecnico?: string;
+  // MEXX import fields
+  numeroChamado?: string;
+  usuarioNome?: string;
+  usuarioEmail?: string;
+  usuarioTelefone?: string;
+  usuarioCpf?: string;
+  prioridade?: string;
+  categoria?: string;
+  orgao?: string;
+  temAnexo?: boolean;
+  descricaoCompleta?: string;
+  slaAtendimento?: string;
+  slaSolucao?: string;
+  previsaoSolucao?: string | null;
+  timeAtendimento?: string;
+  tipoChamado?: string;
+  responsavel?: string;
+  dataAberturaPortal?: string | null;
+  camposPersonalizados?: Record<string, string>;
 }
 
 interface ChamadoCardProps {
