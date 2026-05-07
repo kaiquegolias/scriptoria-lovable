@@ -291,7 +291,37 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
     onSave(dataToSave);
     cleanup();
   };
-  
+
+  const handleMexxExtracted = (d: ExtractedMexxData) => {
+    setFormState(prev => ({
+      ...prev,
+      titulo: d.titulo || prev.titulo,
+      acompanhamento: prev.acompanhamento ||
+        [
+          d.numero_chamado ? `Nº ${d.numero_chamado}` : null,
+          d.descricao,
+        ].filter(Boolean).join('\n\n'),
+      numeroChamado: d.numero_chamado,
+      usuarioNome: d.usuario_nome,
+      usuarioEmail: d.usuario_email,
+      usuarioTelefone: d.usuario_telefone,
+      usuarioCpf: d.usuario_cpf,
+      prioridade: d.prioridade,
+      categoria: d.categoria,
+      orgao: d.orgao,
+      temAnexo: d.tem_anexo,
+      descricaoCompleta: d.descricao,
+      slaAtendimento: d.sla_atendimento,
+      slaSolucao: d.sla_solucao,
+      previsaoSolucao: d.previsao_solucao || null,
+      timeAtendimento: d.time_atendimento,
+      tipoChamado: d.tipo_chamado,
+      responsavel: d.responsavel || 'KAIQUE MATHEUS NEVES MACHADO',
+      dataAberturaPortal: d.data_abertura || null,
+      camposPersonalizados: d.campos_personalizados || {},
+    }));
+  };
+
   const handleClose = () => {
     if (
       formState.titulo.trim() !== '' || 
