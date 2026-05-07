@@ -185,68 +185,122 @@ export type Database = {
         Row: {
           acompanhamento: string
           assunto: string | null
+          campos_personalizados: Json | null
+          categoria: string | null
           classificacao: string | null
+          data_abertura_portal: string | null
           data_atualizacao: string
           data_criacao: string
           data_exclusao: string | null
           data_limite: string | null
+          descricao_completa: string | null
           estruturante: string
           id: string
           links: string[] | null
           motivo_exclusao: string | null
           nivel: string
+          numero_chamado: string | null
+          orgao: string | null
           pen_modulo: string | null
           pen_po: string | null
           pen_po_substituto: string | null
           pen_produto: string | null
           pen_representante_tecnico: string | null
+          previsao_solucao: string | null
+          prioridade: string | null
+          responsavel: string | null
+          sla_atendimento: string | null
+          sla_solucao: string | null
           status: string
+          tem_anexo: boolean | null
+          time_atendimento: string | null
+          tipo_chamado: string | null
           titulo: string
           user_id: string
+          usuario_cpf: string | null
+          usuario_email: string | null
+          usuario_nome: string | null
+          usuario_telefone: string | null
         }
         Insert: {
           acompanhamento: string
           assunto?: string | null
+          campos_personalizados?: Json | null
+          categoria?: string | null
           classificacao?: string | null
+          data_abertura_portal?: string | null
           data_atualizacao?: string
           data_criacao?: string
           data_exclusao?: string | null
           data_limite?: string | null
+          descricao_completa?: string | null
           estruturante: string
           id?: string
           links?: string[] | null
           motivo_exclusao?: string | null
           nivel: string
+          numero_chamado?: string | null
+          orgao?: string | null
           pen_modulo?: string | null
           pen_po?: string | null
           pen_po_substituto?: string | null
           pen_produto?: string | null
           pen_representante_tecnico?: string | null
+          previsao_solucao?: string | null
+          prioridade?: string | null
+          responsavel?: string | null
+          sla_atendimento?: string | null
+          sla_solucao?: string | null
           status: string
+          tem_anexo?: boolean | null
+          time_atendimento?: string | null
+          tipo_chamado?: string | null
           titulo: string
           user_id: string
+          usuario_cpf?: string | null
+          usuario_email?: string | null
+          usuario_nome?: string | null
+          usuario_telefone?: string | null
         }
         Update: {
           acompanhamento?: string
           assunto?: string | null
+          campos_personalizados?: Json | null
+          categoria?: string | null
           classificacao?: string | null
+          data_abertura_portal?: string | null
           data_atualizacao?: string
           data_criacao?: string
           data_exclusao?: string | null
           data_limite?: string | null
+          descricao_completa?: string | null
           estruturante?: string
           id?: string
           links?: string[] | null
           motivo_exclusao?: string | null
           nivel?: string
+          numero_chamado?: string | null
+          orgao?: string | null
           pen_modulo?: string | null
           pen_po?: string | null
           pen_po_substituto?: string | null
           pen_produto?: string | null
           pen_representante_tecnico?: string | null
+          previsao_solucao?: string | null
+          prioridade?: string | null
+          responsavel?: string | null
+          sla_atendimento?: string | null
+          sla_solucao?: string | null
           status?: string
+          tem_anexo?: boolean | null
+          time_atendimento?: string | null
+          tipo_chamado?: string | null
           titulo?: string
           user_id?: string
+          usuario_cpf?: string | null
+          usuario_email?: string | null
+          usuario_nome?: string | null
+          usuario_telefone?: string | null
         }
         Relationships: []
       }

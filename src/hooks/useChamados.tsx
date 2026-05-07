@@ -32,7 +32,7 @@ export function useChamados(encerrados = false) {
       }
 
       if (data) {
-        const formattedChamados: Chamado[] = data.map(item => ({
+        const formattedChamados: Chamado[] = data.map((item: any) => ({
           id: item.id,
           titulo: item.titulo,
           status: item.status as Chamado['status'],
@@ -48,7 +48,25 @@ export function useChamados(encerrados = false) {
           penModulo: item.pen_modulo || undefined,
           penPo: item.pen_po || undefined,
           penPoSubstituto: item.pen_po_substituto || undefined,
-          penRepresentanteTecnico: item.pen_representante_tecnico || undefined
+          penRepresentanteTecnico: item.pen_representante_tecnico || undefined,
+          numeroChamado: item.numero_chamado || undefined,
+          usuarioNome: item.usuario_nome || undefined,
+          usuarioEmail: item.usuario_email || undefined,
+          usuarioTelefone: item.usuario_telefone || undefined,
+          usuarioCpf: item.usuario_cpf || undefined,
+          prioridade: item.prioridade || undefined,
+          categoria: item.categoria || undefined,
+          orgao: item.orgao || undefined,
+          temAnexo: item.tem_anexo ?? undefined,
+          descricaoCompleta: item.descricao_completa || undefined,
+          slaAtendimento: item.sla_atendimento || undefined,
+          slaSolucao: item.sla_solucao || undefined,
+          previsaoSolucao: item.previsao_solucao || null,
+          timeAtendimento: item.time_atendimento || undefined,
+          tipoChamado: item.tipo_chamado || undefined,
+          responsavel: item.responsavel || undefined,
+          dataAberturaPortal: item.data_abertura_portal || null,
+          camposPersonalizados: item.campos_personalizados || {},
         }));
         
         // Filter based on encerrados param - exclude 'excluido' from both views
@@ -96,7 +114,25 @@ export function useChamados(encerrados = false) {
             pen_modulo: chamadoData.penModulo || null,
             pen_po: chamadoData.penPo || null,
             pen_po_substituto: chamadoData.penPoSubstituto || null,
-            pen_representante_tecnico: chamadoData.penRepresentanteTecnico || null
+            pen_representante_tecnico: chamadoData.penRepresentanteTecnico || null,
+            numero_chamado: (chamadoData as any).numeroChamado || null,
+            usuario_nome: (chamadoData as any).usuarioNome || null,
+            usuario_email: (chamadoData as any).usuarioEmail || null,
+            usuario_telefone: (chamadoData as any).usuarioTelefone || null,
+            usuario_cpf: (chamadoData as any).usuarioCpf || null,
+            prioridade: (chamadoData as any).prioridade || null,
+            categoria: (chamadoData as any).categoria || null,
+            orgao: (chamadoData as any).orgao || null,
+            tem_anexo: (chamadoData as any).temAnexo ?? false,
+            descricao_completa: (chamadoData as any).descricaoCompleta || null,
+            sla_atendimento: (chamadoData as any).slaAtendimento || null,
+            sla_solucao: (chamadoData as any).slaSolucao || null,
+            previsao_solucao: (chamadoData as any).previsaoSolucao || null,
+            time_atendimento: (chamadoData as any).timeAtendimento || null,
+            tipo_chamado: (chamadoData as any).tipoChamado || null,
+            responsavel: (chamadoData as any).responsavel || null,
+            data_abertura_portal: (chamadoData as any).dataAberturaPortal || null,
+            campos_personalizados: (chamadoData as any).camposPersonalizados || {},
           }
         ])
         .select('*')

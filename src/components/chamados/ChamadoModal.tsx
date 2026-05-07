@@ -264,12 +264,50 @@ const ChamadoModal: React.FC<ChamadoModalProps> = ({
               </div>
             )}
 
+            {(chamado.numeroChamado || chamado.usuarioNome || chamado.orgao || (chamado.camposPersonalizados && Object.keys(chamado.camposPersonalizados).length > 0)) && (
+              <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-950/40 rounded-lg border border-blue-200 dark:border-blue-800">
+                <h3 className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-3">📋 Dados do Portal MEXX</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  {chamado.numeroChamado && <div><span className="text-muted-foreground">Nº:</span> <b>{chamado.numeroChamado}</b></div>}
+                  {chamado.prioridade && <div><span className="text-muted-foreground">Prioridade:</span> {chamado.prioridade}</div>}
+                  {chamado.usuarioNome && <div className="md:col-span-2"><span className="text-muted-foreground">Solicitante:</span> {chamado.usuarioNome}</div>}
+                  {chamado.usuarioEmail && <div className="md:col-span-2"><span className="text-muted-foreground">E-mail:</span> {chamado.usuarioEmail}</div>}
+                  {chamado.usuarioTelefone && <div><span className="text-muted-foreground">Telefone:</span> {chamado.usuarioTelefone}</div>}
+                  {chamado.orgao && <div><span className="text-muted-foreground">Órgão:</span> {chamado.orgao}</div>}
+                  {chamado.categoria && <div className="md:col-span-2"><span className="text-muted-foreground">Categoria:</span> {chamado.categoria}</div>}
+                  {chamado.responsavel && <div className="md:col-span-2"><span className="text-muted-foreground">Responsável:</span> {chamado.responsavel}</div>}
+                  {chamado.timeAtendimento && <div><span className="text-muted-foreground">Time:</span> {chamado.timeAtendimento}</div>}
+                  {chamado.tipoChamado && <div><span className="text-muted-foreground">Tipo:</span> {chamado.tipoChamado}</div>}
+                  {typeof chamado.temAnexo === 'boolean' && <div><span className="text-muted-foreground">Anexo:</span> {chamado.temAnexo ? 'Sim' : 'Não'}</div>}
+                </div>
+                {chamado.camposPersonalizados && Object.keys(chamado.camposPersonalizados).length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-800">
+                    <div className="text-xs font-semibold text-muted-foreground mb-2">Campos Personalizados</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                      {Object.entries(chamado.camposPersonalizados).map(([k, v]) => (
+                        <div key={k}><span className="text-muted-foreground">{k}:</span> <b>{v}</b></div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {chamado.descricaoCompleta && (
+                  <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-800">
+                    <div className="text-xs font-semibold text-muted-foreground mb-1">Descrição (do PDF)</div>
+                    <div className="p-3 bg-white dark:bg-background rounded border whitespace-pre-wrap text-sm max-h-48 overflow-y-auto">
+                      {chamado.descricaoCompleta}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="mb-6">
               <h3 className="text-sm font-semibold text-gray-500 mb-2">Acompanhamento</h3>
               <div className="p-4 bg-secondary rounded-lg whitespace-pre-wrap">
                 {chamado.acompanhamento}
               </div>
             </div>
+
 
             {chamado.links.length > 0 && (
               <div className="mb-6">

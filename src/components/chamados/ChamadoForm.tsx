@@ -3,6 +3,7 @@ import { X, Plus, Trash, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { Chamado } from './ChamadoCard';
 import { PEN_PRODUCTS, getProductByValue, getModuleByValue, getProductByLabel } from '@/data/penProducts';
+import MexxPdfImport, { ExtractedMexxData } from './MexxPdfImport';
 
 interface ChamadoFormState {
   id?: string;
@@ -19,6 +20,25 @@ interface ChamadoFormState {
   penPo?: string;
   penPoSubstituto?: string;
   penRepresentanteTecnico?: string;
+  // MEXX import metadata
+  numeroChamado?: string;
+  usuarioNome?: string;
+  usuarioEmail?: string;
+  usuarioTelefone?: string;
+  usuarioCpf?: string;
+  prioridade?: string;
+  categoria?: string;
+  orgao?: string;
+  temAnexo?: boolean;
+  descricaoCompleta?: string;
+  slaAtendimento?: string;
+  slaSolucao?: string;
+  previsaoSolucao?: string | null;
+  timeAtendimento?: string;
+  tipoChamado?: string;
+  responsavel?: string;
+  dataAberturaPortal?: string | null;
+  camposPersonalizados?: Record<string, string>;
 }
 
 const ASSUNTO_OPTIONS = [
@@ -271,7 +291,37 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
     onSave(dataToSave);
     cleanup();
   };
-  
+
+  const handleMexxExtracted = (d: ExtractedMexxData) => {
+    setFormState(prev => ({
+      ...prev,
+      titulo: d.titulo || prev.titulo,
+      acompanhamento: prev.acompanhamento ||
+        [
+          d.numero_chamado ? `Nº ${d.numero_chamado}` : null,
+          d.descricao,
+        ].filter(Boolean).join('\n\n'),
+      numeroChamado: d.numero_chamado,
+      usuarioNome: d.usuario_nome,
+      usuarioEmail: d.usuario_email,
+      usuarioTelefone: d.usuario_telefone,
+      usuarioCpf: d.usuario_cpf,
+      prioridade: d.prioridade,
+      categoria: d.categoria,
+      orgao: d.orgao,
+      temAnexo: d.tem_anexo,
+      descricaoCompleta: d.descricao,
+      slaAtendimento: d.sla_atendimento,
+      slaSolucao: d.sla_solucao,
+      previsaoSolucao: d.previsao_solucao || null,
+      timeAtendimento: d.time_atendimento,
+      tipoChamado: d.tipo_chamado,
+      responsavel: d.responsavel || 'KAIQUE MATHEUS NEVES MACHADO',
+      dataAberturaPortal: d.data_abertura || null,
+      camposPersonalizados: d.campos_personalizados || {},
+    }));
+  };
+
   const handleClose = () => {
     if (
       formState.titulo.trim() !== '' || 
@@ -303,6 +353,38 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
         
         <form onSubmit={handleSubmit} className="p-4">
           <div className="space-y-4">
+            {!isEditing && (
+              <MexxPdfImport onExtracted={handleMexxExtracted} />
+            )}
+
+            {(formState.numeroChamado || formState.usuarioNome || formState.orgao) && (
+              <div className="rounded-lg border bg-muted/30 p-3 text-xs space-y-1">
+                <div className="font-semibold text-sm flex items-center gap-2 mb-1">
+                  📋 Dados importados do MEXX
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                  {formState.numeroChamado && <div><span className="text-muted-foreground">Nº:</span> <b>{formState.numeroChamado}</b></div>}
+                  {formState.prioridade && <div><span className="text-muted-foreground">Prioridade:</span> {formState.prioridade}</div>}
+                  {formState.usuarioNome && <div className="col-span-2"><span className="text-muted-foreground">Solicitante:</span> {formState.usuarioNome}</div>}
+                  {formState.usuarioEmail && <div className="col-span-2"><span className="text-muted-foreground">E-mail:</span> {formState.usuarioEmail}</div>}
+                  {formState.orgao && <div><span className="text-muted-foreground">Órgão:</span> {formState.orgao}</div>}
+                  {formState.categoria && <div className="col-span-2"><span className="text-muted-foreground">Categoria:</span> {formState.categoria}</div>}
+                  {formState.responsavel && <div className="col-span-2"><span className="text-muted-foreground">Responsável:</span> {formState.responsavel}</div>}
+                  {typeof formState.temAnexo === 'boolean' && <div><span className="text-muted-foreground">Anexo:</span> {formState.temAnexo ? 'Sim' : 'Não'}</div>}
+                </div>
+                {formState.camposPersonalizados && Object.keys(formState.camposPersonalizados).length > 0 && (
+                  <div className="mt-2 pt-2 border-t">
+                    <div className="font-medium mb-1">Campos personalizados:</div>
+                    <div className="grid grid-cols-2 gap-x-4">
+                      {Object.entries(formState.camposPersonalizados).map(([k, v]) => (
+                        <div key={k}><span className="text-muted-foreground">{k}:</span> {v}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div>
               <label htmlFor="titulo" className="block text-sm font-medium mb-1">
                 Título*

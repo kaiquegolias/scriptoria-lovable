@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.cortana-chat]
 verify_jwt = false
+
+[functions.extract-mexx-pdf]
+verify_jwt = false
