@@ -2,6 +2,10 @@ import React, { useRef, useState } from 'react';
 import { Upload, FileText, Loader2, Sparkles, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 export interface ExtractedMexxData {
   numero_chamado?: string;
@@ -31,16 +35,23 @@ interface Props {
   onExtracted: (data: ExtractedMexxData) => void;
 }
 
-const fileToBase64 = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result.split(',')[1]); // strip data URL prefix
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+const extractPdfText = async (file: File): Promise<string> => {
+  const buffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+  const pages: string[] = [];
+
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const content = await page.getTextContent();
+    const text = content.items
+      .map((item) => ('str' in item ? item.str : ''))
+      .filter(Boolean)
+      .join(' ');
+    pages.push(text);
+  }
+
+  return pages.join('\n\n').trim();
+};
 
 const MexxPdfImport: React.FC<Props> = ({ onExtracted }) => {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -64,9 +75,9 @@ const MexxPdfImport: React.FC<Props> = ({ onExtracted }) => {
     const t = toast.loading('Analisando PDF do MEXX com IA...');
 
     try {
-      const pdfBase64 = await fileToBase64(file);
+      const pdfText = await extractPdfText(file);
       const { data, error } = await supabase.functions.invoke('extract-mexx-pdf', {
-        body: { pdfBase64 },
+        body: { pdfText, fileName: file.name },
       });
 
       if (error) throw error;
