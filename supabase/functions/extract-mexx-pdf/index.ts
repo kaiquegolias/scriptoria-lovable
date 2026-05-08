@@ -7,39 +7,33 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const EXTRACTION_SCHEMA = {
-  type: 'object',
-  properties: {
-    numero_chamado: { type: 'string', description: 'Número do chamado (ex: 48464666)' },
-    titulo: { type: 'string', description: 'Título / assunto do chamado' },
-    usuario_nome: { type: 'string' },
-    usuario_email: { type: 'string' },
-    usuario_telefone: { type: 'string' },
-    usuario_cpf: { type: 'string' },
-    data_abertura: { type: 'string', description: 'Data de abertura no formato ISO 8601' },
-    responsavel: { type: 'string', description: 'Sempre "KAIQUE MATHEUS NEVES MACHADO" se aparecer' },
-    prioridade: { type: 'string', description: 'Baixa, Média, Alta, Urgente' },
-    categoria: { type: 'string' },
-    orgao: { type: 'string', description: 'Órgão / Organização (ex: Processo Eletrônico Nacional)' },
-    descricao: { type: 'string', description: 'Descrição completa do problema relatado' },
-    tem_anexo: { type: 'boolean' },
-    sla_atendimento: { type: 'string' },
-    sla_solucao: { type: 'string' },
-    previsao_solucao: { type: 'string', description: 'Data ISO 8601 ou string vazia' },
-    time_atendimento: { type: 'string' },
-    tipo_chamado: { type: 'string', description: 'Incidente, Solicitação, etc.' },
-    status_portal: { type: 'string' },
-    chave_ativacao: { type: 'string' },
-    campos_personalizados: {
-      type: 'object',
-      description: 'Objeto chave-valor com TODOS os campos personalizados encontrados (Ambiente, Etapa da Ocorrência, Órgão, Versão Módulo, Versão SEI, Evidências, etc.)',
-      additionalProperties: { type: 'string' }
-    }
-  },
-  required: ['numero_chamado', 'titulo', 'descricao', 'campos_personalizados']
-};
-
 const SYSTEM_PROMPT = `Você é um extrator especializado em PDFs do Portal MEXX (gestao.gov.br).
+Retorne APENAS um JSON válido (sem markdown, sem \`\`\`) com EXATAMENTE estas chaves:
+{
+  "numero_chamado": string,
+  "titulo": string,
+  "usuario_nome": string,
+  "usuario_email": string,
+  "usuario_telefone": string,
+  "usuario_cpf": string,
+  "data_abertura": string (ISO 8601 ou ""),
+  "responsavel": string,
+  "prioridade": string,
+  "categoria": string,
+  "orgao": string,
+  "descricao": string,
+  "tem_anexo": boolean,
+  "sla_atendimento": string,
+  "sla_solucao": string,
+  "previsao_solucao": string,
+  "time_atendimento": string,
+  "tipo_chamado": string,
+  "status_portal": string,
+  "chave_ativacao": string,
+  "campos_personalizados": { [chave: string]: string }
+}
+
+Regras:
 Extraia TODOS os campos solicitados do chamado contido no PDF.
 - O número do chamado normalmente aparece como "Nº XXXXXXXX" no topo.
 - O responsável é sempre KAIQUE MATHEUS NEVES MACHADO se aparecer.
@@ -83,7 +77,6 @@ Deno.serve(async (req) => {
           ],
           generationConfig: {
             responseMimeType: 'application/json',
-            responseSchema: EXTRACTION_SCHEMA,
             temperature: 0.1,
           },
         }),
