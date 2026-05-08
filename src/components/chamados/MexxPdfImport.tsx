@@ -138,9 +138,10 @@ const MexxPdfImport: React.FC<Props> = ({ onExtracted }) => {
     setFileName(file.name);
     setSuccess(false);
     const t = toast.loading('Analisando PDF do MEXX com IA...');
+    let pdfText = '';
 
     try {
-      const pdfText = await extractPdfText(file);
+      pdfText = await extractPdfText(file);
       const { data, error } = await supabase.functions.invoke('extract-mexx-pdf', {
         body: { pdfText, fileName: file.name },
       });
@@ -158,6 +159,12 @@ const MexxPdfImport: React.FC<Props> = ({ onExtracted }) => {
       toast.success('Chamado extraído! Revise os campos e salve.', { id: t });
     } catch (e) {
       console.error(e);
+      if (pdfText) {
+        onExtracted(extractLocalMexxData(pdfText));
+        setSuccess(true);
+        toast.success('Chamado extraído localmente. Revise os campos e salve.', { id: t });
+        return;
+      }
       toast.error(e instanceof Error ? e.message : 'Falha ao extrair PDF', { id: t });
       setFileName(null);
     } finally {
