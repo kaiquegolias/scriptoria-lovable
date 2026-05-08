@@ -77,7 +77,6 @@ Deno.serve(async (req) => {
           ],
           generationConfig: {
             responseMimeType: 'application/json',
-            responseSchema: EXTRACTION_SCHEMA,
             temperature: 0.1,
           },
         }),
