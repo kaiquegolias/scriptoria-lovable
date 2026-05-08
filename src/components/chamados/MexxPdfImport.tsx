@@ -43,14 +43,79 @@ const extractPdfText = async (file: File): Promise<string> => {
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
     const page = await pdf.getPage(pageNumber);
     const content = await page.getTextContent();
-    const text = content.items
-      .map((item) => ('str' in item ? item.str : ''))
-      .filter(Boolean)
-      .join(' ');
+    const positionedItems = content.items
+      .filter((item) => 'str' in item && item.str.trim())
+      .map((item) => {
+        const textItem = item as { str: string; transform?: number[] };
+        return { str: textItem.str.trim(), x: textItem.transform?.[4] ?? 0, y: textItem.transform?.[5] ?? 0 };
+      })
+      .sort((a, b) => Math.abs(b.y - a.y) > 4 ? b.y - a.y : a.x - b.x);
+
+    const lines: string[] = [];
+    positionedItems.forEach((item) => {
+      const last = lines[lines.length - 1];
+      const previous = positionedItems[positionedItems.indexOf(item) - 1];
+      if (!last || (previous && Math.abs(previous.y - item.y) > 4)) lines.push(item.str);
+      else lines[lines.length - 1] = `${last} ${item.str}`;
+    });
+    const text = lines.join('\n');
     pages.push(text);
   }
 
   return pages.join('\n\n').trim();
+};
+
+const parseBrazilianDate = (value?: string) => {
+  if (!value) return '';
+  const match = value.match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if (!match) return value.trim();
+  const [, day, month, year, hour = '00', minute = '00', second = '00'] = match;
+  return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+};
+
+const extractByLabel = (text: string, labels: string[], stopLabels: string[] = []) => {
+  const escapedLabels = labels.map((label) => label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  const escapedStops = stopLabels.map((label) => label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  const stop = escapedStops ? `(?=\\n\\s*(?:${escapedStops})\\s*:?|$)` : '(?=\\n|$)';
+  const regex = new RegExp(`(?:^|\\n)\\s*(?:${escapedLabels})\\s*:?\\s*([\\s\\S]*?)${stop}`, 'i');
+  return text.match(regex)?.[1]?.replace(/\s+/g, ' ').trim() || '';
+};
+
+const extractLocalMexxData = (text: string): ExtractedMexxData => {
+  const stopLabels = ['Campos Personalizados', 'Anexos', 'Histórico', 'Comentários', 'Interações', 'SLA', 'Atendimento', 'Descrição'];
+  const numero = text.match(/(?:N[º°o.]|Número do chamado|Chamado)\s*[:#-]?\s*(\d{4,})/i)?.[1] || '';
+  const email = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || '';
+  const descricao = extractByLabel(text, ['Descrição', 'Descricao'], ['Campos Personalizados', 'Anexos', 'Histórico', 'Comentários', 'Interações']) || text.slice(0, 1200);
+  const camposPersonalizados: Record<string, string> = {};
+  const customBlock = text.split(/Campos Personalizados/i)[1]?.split(/(?:Anexos|Histórico|Comentários|Interações)/i)[0] || '';
+  customBlock.split('\n').forEach((line) => {
+    const match = line.match(/^\s*([^:]{3,80})\s*:\s*(.+)$/);
+    if (match) camposPersonalizados[match[1].trim()] = match[2].trim();
+  });
+
+  return {
+    numero_chamado: numero,
+    titulo: numero ? `Chamado MEXX Nº ${numero}` : 'Chamado importado do MEXX',
+    usuario_nome: extractByLabel(text, ['Nome do usuário', 'Nome do usuario', 'Solicitante', 'Usuário', 'Usuario'], stopLabels),
+    usuario_email: email,
+    usuario_telefone: extractByLabel(text, ['Telefone', 'Celular'], stopLabels),
+    usuario_cpf: text.match(/\b\d{3}\.\d{3}\.\d{3}-\d{2}\b|\b\d{11}\b/)?.[0] || '',
+    data_abertura: parseBrazilianDate(extractByLabel(text, ['Data da abertura', 'Data de abertura', 'Aberto em', 'Criado em'], stopLabels)),
+    responsavel: extractByLabel(text, ['Responsável', 'Responsavel'], stopLabels) || 'KAIQUE MATHEUS NEVES MACHADO',
+    prioridade: extractByLabel(text, ['Prioridade'], stopLabels),
+    categoria: extractByLabel(text, ['Categoria'], stopLabels),
+    orgao: extractByLabel(text, ['Órgão', 'Orgao', 'Nome do órgão', 'Nome do orgao'], stopLabels),
+    descricao,
+    tem_anexo: /\b(anexo|anexos|arquivo anexado|evid[eê]ncias? anexad[ao]s?)\b/i.test(text) && !/sem anexo|não possui anexo|nao possui anexo/i.test(text),
+    sla_atendimento: extractByLabel(text, ['SLA Atendimento', 'SLA de Atendimento'], stopLabels),
+    sla_solucao: extractByLabel(text, ['SLA Solução', 'SLA Solucao', 'SLA de Solução', 'SLA de Solucao'], stopLabels),
+    previsao_solucao: extractByLabel(text, ['Previsão de solução', 'Previsao de solucao'], stopLabels),
+    time_atendimento: extractByLabel(text, ['Time de atendimento', 'Time Atendimento'], stopLabels),
+    tipo_chamado: extractByLabel(text, ['Tipo de chamado', 'Tipo Chamado'], stopLabels),
+    status_portal: extractByLabel(text, ['Status', 'Status portal', 'Status do portal'], stopLabels),
+    chave_ativacao: extractByLabel(text, ['Chave de ativação', 'Chave de ativacao'], stopLabels),
+    campos_personalizados: camposPersonalizados,
+  };
 };
 
 const MexxPdfImport: React.FC<Props> = ({ onExtracted }) => {
@@ -80,8 +145,13 @@ const MexxPdfImport: React.FC<Props> = ({ onExtracted }) => {
         body: { pdfText, fileName: file.name },
       });
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (error || data?.fallback || data?.error) {
+        console.warn('Extração via IA indisponível, usando extração local:', error || data?.error);
+        onExtracted(extractLocalMexxData(pdfText));
+        setSuccess(true);
+        toast.success('Chamado extraído localmente. Revise os campos e salve.', { id: t });
+        return;
+      }
 
       onExtracted(data.data as ExtractedMexxData);
       setSuccess(true);
