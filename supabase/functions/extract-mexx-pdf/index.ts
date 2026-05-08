@@ -80,9 +80,7 @@ Extraia os dados do chamado MEXX e retorne somente o JSON solicitado.`;
             { role: 'user', content: userPrompt },
           ],
           response_format: { type: 'json_object' },
-          generationConfig: {
-            temperature: 0.1,
-          },
+          temperature: 0.1,
         }),
       }
     );
@@ -114,7 +112,8 @@ Extraia os dados do chamado MEXX e retorne somente o JSON solicitado.`;
 
     let parsed;
     try {
-      parsed = JSON.parse(text);
+      const cleanJson = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      parsed = JSON.parse(cleanJson);
     } catch (e) {
       console.error('JSON parse fail:', text);
       return new Response(JSON.stringify({ error: 'Resposta da IA inválida', raw: text }), {
