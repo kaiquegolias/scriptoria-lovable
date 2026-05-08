@@ -1,5 +1,5 @@
-// Extract MEXX ticket data from a PDF using Gemini (native PDF support).
-// Input: { pdfBase64: string }
+// Extract MEXX ticket data from PDF text using Lovable AI Gateway.
+// Input: { pdfText: string, fileName?: string }
 // Output: structured ticket JSON
 
 const corsHeaders = {
@@ -47,36 +47,40 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const { pdfBase64 } = await req.json();
-    if (!pdfBase64 || typeof pdfBase64 !== 'string') {
-      return new Response(JSON.stringify({ error: 'pdfBase64 obrigatório' }), {
+    const { pdfText, fileName } = await req.json();
+    if (!pdfText || typeof pdfText !== 'string' || pdfText.trim().length < 30) {
+      return new Response(JSON.stringify({ error: 'Não consegui ler texto suficiente deste PDF. Verifique se ele não está escaneado como imagem.' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
-    if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY ausente');
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY ausente');
 
-    // Use Gemini native API for PDF support
+    const userPrompt = `Arquivo: ${fileName || 'PDF MEXX'}
+
+TEXTO EXTRAÍDO DO PDF:
+${pdfText.slice(0, 70000)}
+
+Extraia os dados do chamado MEXX e retorne somente o JSON solicitado.`;
+
     const resp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      'https://ai.gateway.lovable.dev/v1/chat/completions',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                { inline_data: { mime_type: 'application/pdf', data: pdfBase64 } },
-                { text: 'Extraia os dados do chamado MEXX deste PDF e retorne em JSON conforme o schema fornecido.' }
-              ],
-            },
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: userPrompt },
           ],
+          response_format: { type: 'json_object' },
           generationConfig: {
-            responseMimeType: 'application/json',
             temperature: 0.1,
           },
         }),
@@ -85,7 +89,7 @@ Deno.serve(async (req) => {
 
     if (!resp.ok) {
       const errText = await resp.text();
-      console.error('Gemini error:', resp.status, errText);
+      console.error('Lovable AI Gateway error:', resp.status, errText);
       if (resp.status === 429) {
         return new Response(JSON.stringify({ error: 'Limite de requisições excedido. Tente novamente em instantes.' }), {
           status: 429,
@@ -99,7 +103,7 @@ Deno.serve(async (req) => {
     }
 
     const data = await resp.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const text = data?.choices?.[0]?.message?.content;
     if (!text) {
       console.error('Gemini empty response:', JSON.stringify(data));
       return new Response(JSON.stringify({ error: 'IA não retornou conteúdo' }), {
