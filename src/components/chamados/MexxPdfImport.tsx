@@ -75,9 +75,9 @@ const MexxPdfImport: React.FC<Props> = ({ onExtracted }) => {
     const t = toast.loading('Analisando PDF do MEXX com IA...');
 
     try {
-      const pdfBase64 = await fileToBase64(file);
+      const pdfText = await extractPdfText(file);
       const { data, error } = await supabase.functions.invoke('extract-mexx-pdf', {
-        body: { pdfBase64 },
+        body: { pdfText, fileName: file.name },
       });
 
       if (error) throw error;
