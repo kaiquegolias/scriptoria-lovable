@@ -4,8 +4,13 @@
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
+
+const jsonResponse = (body: Record<string, unknown>, status = 200) => new Response(JSON.stringify(body), {
+  status,
+  headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+});
 
 const SYSTEM_PROMPT = `Você é um extrator especializado em PDFs do Portal MEXX (gestao.gov.br).
 Retorne APENAS um JSON válido (sem markdown, sem \`\`\`) com EXATAMENTE estas chaves:
@@ -49,14 +54,11 @@ Deno.serve(async (req) => {
   try {
     const { pdfText, fileName } = await req.json();
     if (!pdfText || typeof pdfText !== 'string' || pdfText.trim().length < 30) {
-      return new Response(JSON.stringify({ error: 'Não consegui ler texto suficiente deste PDF. Verifique se ele não está escaneado como imagem.' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Não consegui ler texto suficiente deste PDF. Verifique se ele não está escaneado como imagem.', fallback: true });
     }
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY ausente');
+    if (!LOVABLE_API_KEY) return jsonResponse({ error: 'LOVABLE_API_KEY ausente', fallback: true });
 
     const userPrompt = `Arquivo: ${fileName || 'PDF MEXX'}
 
@@ -89,25 +91,16 @@ Extraia os dados do chamado MEXX e retorne somente o JSON solicitado.`;
       const errText = await resp.text();
       console.error('Lovable AI Gateway error:', resp.status, errText);
       if (resp.status === 429) {
-        return new Response(JSON.stringify({ error: 'Limite de requisições excedido. Tente novamente em instantes.' }), {
-          status: 429,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return jsonResponse({ error: 'Limite de requisições excedido. Usei a extração local como alternativa.', fallback: true });
       }
-      return new Response(JSON.stringify({ error: 'Falha na extração via IA', detail: errText }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Falha na extração via IA', detail: errText, fallback: true });
     }
 
     const data = await resp.json();
     const text = data?.choices?.[0]?.message?.content;
     if (!text) {
       console.error('Gemini empty response:', JSON.stringify(data));
-      return new Response(JSON.stringify({ error: 'IA não retornou conteúdo' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'IA não retornou conteúdo', fallback: true });
     }
 
     let parsed;
@@ -116,20 +109,12 @@ Extraia os dados do chamado MEXX e retorne somente o JSON solicitado.`;
       parsed = JSON.parse(cleanJson);
     } catch (e) {
       console.error('JSON parse fail:', text);
-      return new Response(JSON.stringify({ error: 'Resposta da IA inválida', raw: text }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Resposta da IA inválida', raw: text, fallback: true });
     }
 
-    return new Response(JSON.stringify({ data: parsed }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ data: parsed });
   } catch (e) {
     console.error('extract-mexx-pdf error:', e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : 'Erro desconhecido' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ error: e instanceof Error ? e.message : 'Erro desconhecido', fallback: true });
   }
 });
