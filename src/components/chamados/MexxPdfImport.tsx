@@ -35,10 +35,16 @@ interface Props {
   onExtracted: (data: ExtractedMexxData) => void;
 }
 
-const extractPdfText = async (file: File): Promise<string> => {
+interface PdfExtractionResult {
+  text: string;
+  pageImages: string[];
+}
+
+const extractPdfContent = async (file: File): Promise<PdfExtractionResult> => {
   const buffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
   const pages: string[] = [];
+  const pageImages: string[] = [];
 
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
     const page = await pdf.getPage(pageNumber);
@@ -60,9 +66,23 @@ const extractPdfText = async (file: File): Promise<string> => {
     });
     const text = lines.join('\n');
     pages.push(text);
+
+    if (pageNumber <= 6) {
+      const baseViewport = page.getViewport({ scale: 1 });
+      const scale = Math.min(2, Math.max(1.15, 1400 / baseViewport.width));
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      if (context) {
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: context, viewport }).promise;
+        pageImages.push(canvas.toDataURL('image/jpeg', 0.78));
+      }
+    }
   }
 
-  return pages.join('\n\n').trim();
+  return { text: pages.join('\n\n').trim(), pageImages };
 };
 
 const parseBrazilianDate = (value?: string) => {
@@ -118,6 +138,25 @@ const extractLocalMexxData = (text: string): ExtractedMexxData => {
   };
 };
 
+const mergeExtractedData = (primary: ExtractedMexxData, fallback: ExtractedMexxData): ExtractedMexxData => ({
+  ...fallback,
+  ...Object.fromEntries(Object.entries(primary).filter(([, value]) => {
+    if (typeof value === 'boolean') return true;
+    if (value && typeof value === 'object') return Object.keys(value).length > 0;
+    return String(value || '').trim().length > 0;
+  })),
+  responsavel: 'KAIQUE MATHEUS NEVES MACHADO',
+  campos_personalizados: {
+    ...(fallback.campos_personalizados || {}),
+    ...(primary.campos_personalizados || {}),
+  },
+});
+
+const hasUsefulMexxData = (data: ExtractedMexxData) => Boolean(
+  data.numero_chamado || data.usuario_nome || data.usuario_email || data.orgao || data.descricao ||
+  (data.campos_personalizados && Object.keys(data.campos_personalizados).length > 0)
+);
+
 const MexxPdfImport: React.FC<Props> = ({ onExtracted }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
@@ -141,28 +180,40 @@ const MexxPdfImport: React.FC<Props> = ({ onExtracted }) => {
     let pdfText = '';
 
     try {
-      pdfText = await extractPdfText(file);
+      const pdfContent = await extractPdfContent(file);
+      pdfText = pdfContent.text;
+      const localData = pdfText ? extractLocalMexxData(pdfText) : {} as ExtractedMexxData;
       const { data, error } = await supabase.functions.invoke('extract-mexx-pdf', {
-        body: { pdfText, fileName: file.name },
+        body: { pdfText, pageImages: pdfContent.pageImages, fileName: file.name },
       });
 
       if (error || data?.fallback || data?.error) {
         console.warn('Extração via IA indisponível, usando extração local:', error || data?.error);
-        onExtracted(extractLocalMexxData(pdfText));
-        setSuccess(true);
-        toast.success('Chamado extraído localmente. Revise os campos e salve.', { id: t });
+        if (hasUsefulMexxData(localData)) {
+          onExtracted(localData);
+          setSuccess(true);
+          toast.success('Chamado extraído localmente. Revise os campos e salve.', { id: t });
+        } else {
+          toast.error(data?.error || 'Não consegui identificar os dados do MEXX neste PDF.', { id: t });
+        }
         return;
       }
 
-      onExtracted(data.data as ExtractedMexxData);
+      const extracted = mergeExtractedData(data.data as ExtractedMexxData, localData);
+      onExtracted(extracted);
       setSuccess(true);
       toast.success('Chamado extraído! Revise os campos e salve.', { id: t });
     } catch (e) {
       console.error(e);
       if (pdfText) {
-        onExtracted(extractLocalMexxData(pdfText));
-        setSuccess(true);
-        toast.success('Chamado extraído localmente. Revise os campos e salve.', { id: t });
+        const localData = extractLocalMexxData(pdfText);
+        if (hasUsefulMexxData(localData)) {
+          onExtracted(localData);
+          setSuccess(true);
+          toast.success('Chamado extraído localmente. Revise os campos e salve.', { id: t });
+        } else {
+          toast.error('Não consegui identificar os dados do MEXX neste PDF.', { id: t });
+        }
         return;
       }
       toast.error(e instanceof Error ? e.message : 'Falha ao extrair PDF', { id: t });
