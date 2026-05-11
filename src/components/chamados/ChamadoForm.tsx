@@ -157,6 +157,7 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
   });
   
   const [newLink, setNewLink] = useState('');
+  const [editPoManual, setEditPoManual] = useState(false);
   
   // Get available modules based on selected product
   const selectedProduct = formState.penProduto ? getProductByValue(formState.penProduto) : null;
