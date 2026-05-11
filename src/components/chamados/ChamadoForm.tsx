@@ -157,6 +157,7 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
   });
   
   const [newLink, setNewLink] = useState('');
+  const [editPoManual, setEditPoManual] = useState(false);
   
   // Get available modules based on selected product
   const selectedProduct = formState.penProduto ? getProductByValue(formState.penProduto) : null;
@@ -533,22 +534,87 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
                 </div>
                 
                 {/* PO and Representative Information */}
-                {formState.penModulo && formState.penPo && (
-                  <div className="mt-3 p-3 bg-primary/10 rounded-md">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">PO:</span>
-                        <span className="ml-2 font-medium">{formState.penPo}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">PO Substituto:</span>
-                        <span className="ml-2 font-medium">{formState.penPoSubstituto || '-'}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Rep. Técnico:</span>
-                        <span className="ml-2 font-medium">{formState.penRepresentanteTecnico || '-'}</span>
-                      </div>
-                    </div>
+                {formState.penModulo && (
+                  <div className="mt-3 p-3 bg-primary/10 rounded-md space-y-3">
+                    {!editPoManual ? (
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">PO:</span>
+                            <span className="ml-2 font-medium">{formState.penPo || '-'}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">PO Substituto:</span>
+                            <span className="ml-2 font-medium">{formState.penPoSubstituto || '-'}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Rep. Técnico:</span>
+                            <span className="ml-2 font-medium">{formState.penRepresentanteTecnico || '-'}</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEditPoManual(true)}
+                          className="text-xs px-3 py-1.5 rounded-md border border-primary/40 bg-background hover:bg-accent transition"
+                        >
+                          Outros (editar manualmente)
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                          <div>
+                            <label className="block text-xs text-muted-foreground mb-1">PO</label>
+                            <input
+                              type="text"
+                              name="penPo"
+                              value={formState.penPo || ''}
+                              onChange={handleChange}
+                              placeholder="Nome do PO"
+                              className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-muted-foreground mb-1">PO Substituto</label>
+                            <input
+                              type="text"
+                              name="penPoSubstituto"
+                              value={formState.penPoSubstituto || ''}
+                              onChange={handleChange}
+                              placeholder="Nome do PO substituto"
+                              className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-muted-foreground mb-1">Rep. Técnico</label>
+                            <input
+                              type="text"
+                              name="penRepresentanteTecnico"
+                              value={formState.penRepresentanteTecnico || ''}
+                              onChange={handleChange}
+                              placeholder="Nome do representante técnico"
+                              className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background"
+                            />
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const module = getModuleByValue(formState.penProduto || '', formState.penModulo || '');
+                            setFormState(prev => ({
+                              ...prev,
+                              penPo: module?.po || '',
+                              penPoSubstituto: module?.poSubstituto || '',
+                              penRepresentanteTecnico: module?.representanteTecnico || '',
+                            }));
+                            setEditPoManual(false);
+                          }}
+                          className="text-xs px-3 py-1.5 rounded-md border bg-background hover:bg-accent transition"
+                        >
+                          Restaurar dados da planilha
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
