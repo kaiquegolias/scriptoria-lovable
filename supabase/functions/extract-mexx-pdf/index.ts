@@ -1,5 +1,5 @@
 // Extract MEXX ticket data from PDF using Lovable AI Gateway.
-// Input: { pdfText?: string, pdfBase64?: string, fileName?: string }
+// Input: { pdfText?: string, pageImages?: string[], fileName?: string }
 // Output: structured ticket JSON
 
 const corsHeaders = {
@@ -145,11 +145,14 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const { pdfText, pdfBase64, fileName } = await req.json();
-    const hasPdf = typeof pdfBase64 === 'string' && pdfBase64.length > 500;
+    const { pdfText, pageImages, fileName } = await req.json();
+    const images = Array.isArray(pageImages)
+      ? pageImages.filter((img) => typeof img === 'string' && img.startsWith('data:image/')).slice(0, 6)
+      : [];
+    const hasImages = images.length > 0;
     const hasText = typeof pdfText === 'string' && pdfText.trim().length >= 30;
 
-    if (!hasPdf && !hasText) {
+    if (!hasImages && !hasText) {
       return jsonResponse({ error: 'Não recebi conteúdo suficiente para analisar o PDF.', fallback: true });
     }
 
@@ -159,19 +162,14 @@ Deno.serve(async (req) => {
     const content: Array<Record<string, unknown>> = [
       {
         type: 'text',
-        text: `Arquivo: ${fileName || 'PDF MEXX'}\n${hasText ? `\nTexto extraído pelo navegador:\n${String(pdfText).slice(0, 70000)}` : '\nO texto extraído pelo navegador veio insuficiente; leia diretamente o PDF anexado.'}\n\nExtraia os dados do chamado MEXX e retorne somente o JSON solicitado.`,
+        text: `Arquivo: ${fileName || 'PDF MEXX'}\n${hasText ? `\nTexto extraído pelo navegador:\n${String(pdfText).slice(0, 70000)}` : '\nO texto extraído pelo navegador veio insuficiente; leia as imagens das páginas via OCR.'}\n\nExtraia os dados do chamado MEXX e retorne somente o JSON solicitado.`,
       },
     ];
 
-    if (hasPdf) {
-      content.push({
-        type: 'file',
-        file: {
-          filename: fileName || 'chamado-mexx.pdf',
-          file_data: `data:application/pdf;base64,${pdfBase64}`,
-        },
-      });
-    }
+    images.forEach((imageUrl, index) => {
+      content.push({ type: 'text', text: `Página ${index + 1} do PDF MEXX:` });
+      content.push({ type: 'image_url', image_url: { url: imageUrl } });
+    });
 
     const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
