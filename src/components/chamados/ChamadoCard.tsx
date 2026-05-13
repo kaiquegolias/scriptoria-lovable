@@ -328,21 +328,24 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({
       )}
       
       {chamado.status === 'agendados_aguardando' && chamado.dataLimite && (
-        <div className={`mb-4 p-2 rounded-md flex items-center ${isCardDelayed ? 'bg-red-100' : 'bg-yellow-100'}`}>
-          <Calendar size={14} className={isCardDelayed ? 'text-red-600 mr-2' : 'text-yellow-600 mr-2'} />
-          <div>
-            <span className="text-xs font-medium">
-              {isCardDelayed ? 'ATRASADO - Prazo expirado em: ' : 'Aguardando até: '}
+        <div className={`relative mb-3 px-3 py-2 rounded-lg flex items-center gap-2 border ${isCardDelayed ? 'bg-red-50 border-red-200 dark:bg-red-950/40 dark:border-red-900' : 'bg-amber-50 border-amber-200 dark:bg-amber-950/40 dark:border-amber-900'}`}>
+          {isCardDelayed ? <AlertCircle size={14} className="text-red-600 shrink-0" /> : <Calendar size={14} className="text-amber-600 shrink-0" />}
+          <div className="text-xs">
+            <span className="font-semibold">
+              {isCardDelayed ? 'ATRASADO • ' : 'Aguardando até '}
             </span>
-            <span className="text-xs">
-              {format(new Date(chamado.dataLimite), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-            </span>
+            {format(new Date(chamado.dataLimite), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
           </div>
         </div>
       )}
-      
-      <div className="text-xs text-foreground/60 mt-2">
-        Atualizado em {new Date(chamado.dataAtualizacao).toLocaleDateString('pt-BR')}
+
+      <div className="relative flex items-center justify-between text-[11px] text-muted-foreground pt-2 border-t">
+        <span>Atualizado {new Date(chamado.dataAtualizacao).toLocaleDateString('pt-BR')}</span>
+        {chamado.usuarioNome && (
+          <span className="truncate ml-2 max-w-[55%] text-right" title={chamado.usuarioNome}>
+            👤 {chamado.usuarioNome}
+          </span>
+        )}
       </div>
 
       {showDeleteModal && (
