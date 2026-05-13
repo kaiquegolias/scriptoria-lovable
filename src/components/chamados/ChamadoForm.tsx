@@ -135,7 +135,25 @@ const ChamadoForm: React.FC<ChamadoFormProps> = ({ onSave, onClose, chamado }) =
         penModulo: penModuloValue,
         penPo: chamado.penPo || '',
         penPoSubstituto: chamado.penPoSubstituto || '',
-        penRepresentanteTecnico: chamado.penRepresentanteTecnico || ''
+        penRepresentanteTecnico: chamado.penRepresentanteTecnico || '',
+        numeroChamado: chamado.numeroChamado,
+        usuarioNome: chamado.usuarioNome,
+        usuarioEmail: chamado.usuarioEmail,
+        usuarioTelefone: chamado.usuarioTelefone,
+        usuarioCpf: chamado.usuarioCpf,
+        prioridade: chamado.prioridade,
+        categoria: chamado.categoria,
+        orgao: chamado.orgao,
+        temAnexo: chamado.temAnexo,
+        descricaoCompleta: chamado.descricaoCompleta,
+        slaAtendimento: chamado.slaAtendimento,
+        slaSolucao: chamado.slaSolucao,
+        previsaoSolucao: chamado.previsaoSolucao || null,
+        timeAtendimento: chamado.timeAtendimento,
+        tipoChamado: chamado.tipoChamado,
+        responsavel: chamado.responsavel,
+        dataAberturaPortal: chamado.dataAberturaPortal || null,
+        camposPersonalizados: chamado.camposPersonalizados || {},
       };
     }
     
