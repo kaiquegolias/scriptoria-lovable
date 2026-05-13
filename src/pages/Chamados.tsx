@@ -60,14 +60,21 @@ const Chamados = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-2">Gerenciamento de Chamados</h1>
-      <p className="text-foreground/70 mb-8">
-        Acompanhe e atualize o status dos seus chamados.
-      </p>
-      
+      <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-primary/10 via-accent/40 to-background p-6 mb-8 shadow-sm">
+        <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-primary/15 blur-3xl pointer-events-none" />
+        <div className="relative">
+          <span className="inline-block text-[11px] font-semibold uppercase tracking-wider text-primary bg-primary/10 px-2.5 py-1 rounded-full mb-3">
+            Atendimento
+          </span>
+          <h1 className="text-3xl font-bold tracking-tight">Gerenciamento de Chamados</h1>
+          <p className="text-foreground/70 mt-2 max-w-2xl">
+            Acompanhe, atualize e priorize seus chamados em tempo real. Importe automaticamente do Portal MEXX e mantenha tudo organizado.
+          </p>
+        </div>
+      </div>
+
       <ChamadoList />
 
-      {/* Modal for viewing chamado from URL parameter */}
       {selectedChamado && (
         <ChamadoModal
           chamado={selectedChamado}
