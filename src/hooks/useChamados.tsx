@@ -143,24 +143,7 @@ export function useChamados(encerrados = false) {
       }
 
       if (data) {
-        const newChamado: Chamado = {
-          id: data.id,
-          titulo: data.titulo,
-          status: data.status as Chamado['status'],
-          estruturante: data.estruturante as 'PNCP' | 'PEN' | 'Outros',
-          nivel: data.nivel as 'N1' | 'N2' | 'N3',
-          acompanhamento: data.acompanhamento,
-          links: data.links || [],
-          dataCriacao: data.data_criacao,
-          dataAtualizacao: data.data_atualizacao,
-          dataLimite: data.data_limite,
-          assunto: data.assunto || undefined,
-          penProduto: data.pen_produto || undefined,
-          penModulo: data.pen_modulo || undefined,
-          penPo: data.pen_po || undefined,
-          penPoSubstituto: data.pen_po_substituto || undefined,
-          penRepresentanteTecnico: data.pen_representante_tecnico || undefined
-        };
+        const newChamado: Chamado = mapRowToChamado(data);
 
         if (!encerrados && newChamado.status !== 'resolvido') {
           setChamados([newChamado, ...chamados]);
