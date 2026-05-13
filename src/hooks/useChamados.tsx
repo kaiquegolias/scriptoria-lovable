@@ -7,6 +7,43 @@ import { useAuth } from '@/context/AuthContext';
 import { addBusinessDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+const mapRowToChamado = (item: any): Chamado => ({
+  id: item.id,
+  titulo: item.titulo,
+  status: item.status as Chamado['status'],
+  estruturante: item.estruturante as 'PNCP' | 'PEN' | 'Outros',
+  nivel: item.nivel as 'N1' | 'N2' | 'N3',
+  acompanhamento: item.acompanhamento,
+  links: item.links || [],
+  dataCriacao: item.data_criacao,
+  dataAtualizacao: item.data_atualizacao,
+  dataLimite: item.data_limite,
+  assunto: item.assunto || undefined,
+  penProduto: item.pen_produto || undefined,
+  penModulo: item.pen_modulo || undefined,
+  penPo: item.pen_po || undefined,
+  penPoSubstituto: item.pen_po_substituto || undefined,
+  penRepresentanteTecnico: item.pen_representante_tecnico || undefined,
+  numeroChamado: item.numero_chamado || undefined,
+  usuarioNome: item.usuario_nome || undefined,
+  usuarioEmail: item.usuario_email || undefined,
+  usuarioTelefone: item.usuario_telefone || undefined,
+  usuarioCpf: item.usuario_cpf || undefined,
+  prioridade: item.prioridade || undefined,
+  categoria: item.categoria || undefined,
+  orgao: item.orgao || undefined,
+  temAnexo: item.tem_anexo ?? undefined,
+  descricaoCompleta: item.descricao_completa || undefined,
+  slaAtendimento: item.sla_atendimento || undefined,
+  slaSolucao: item.sla_solucao || undefined,
+  previsaoSolucao: item.previsao_solucao || null,
+  timeAtendimento: item.time_atendimento || undefined,
+  tipoChamado: item.tipo_chamado || undefined,
+  responsavel: item.responsavel || undefined,
+  dataAberturaPortal: item.data_abertura_portal || null,
+  camposPersonalizados: item.campos_personalizados || {},
+});
+
 export function useChamados(encerrados = false) {
   const [chamados, setChamados] = useState<Chamado[]>([]);
   const [loading, setLoading] = useState(true);
