@@ -279,11 +279,13 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({
         </div>
       )}
       
-      <div className="mb-4">
-        <h4 className="text-xs font-medium uppercase text-foreground/60 mb-1">
+      <div className="relative mb-3">
+        <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
           Acompanhamento
         </h4>
-        <p className="text-sm text-foreground/80 line-clamp-2 bg-white/50 p-2 rounded">{chamado.acompanhamento}</p>
+        <p className="text-sm text-foreground/85 line-clamp-2 bg-muted/40 px-3 py-2 rounded-lg border border-border/50">
+          {chamado.acompanhamento}
+        </p>
       </div>
 
       {/* Última Observação */}
