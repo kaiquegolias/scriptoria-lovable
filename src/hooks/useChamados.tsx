@@ -183,6 +183,7 @@ export function useChamados(encerrados = false) {
         dataLimite = null;
       }
 
+      const c = chamadoData as any;
       const { data, error } = await supabase
         .from('chamados')
         .update({
@@ -199,7 +200,25 @@ export function useChamados(encerrados = false) {
           pen_modulo: chamadoData.penModulo || null,
           pen_po: chamadoData.penPo || null,
           pen_po_substituto: chamadoData.penPoSubstituto || null,
-          pen_representante_tecnico: chamadoData.penRepresentanteTecnico || null
+          pen_representante_tecnico: chamadoData.penRepresentanteTecnico || null,
+          numero_chamado: c.numeroChamado ?? null,
+          usuario_nome: c.usuarioNome ?? null,
+          usuario_email: c.usuarioEmail ?? null,
+          usuario_telefone: c.usuarioTelefone ?? null,
+          usuario_cpf: c.usuarioCpf ?? null,
+          prioridade: c.prioridade ?? null,
+          categoria: c.categoria ?? null,
+          orgao: c.orgao ?? null,
+          tem_anexo: c.temAnexo ?? false,
+          descricao_completa: c.descricaoCompleta ?? null,
+          sla_atendimento: c.slaAtendimento ?? null,
+          sla_solucao: c.slaSolucao ?? null,
+          previsao_solucao: c.previsaoSolucao ?? null,
+          time_atendimento: c.timeAtendimento ?? null,
+          tipo_chamado: c.tipoChamado ?? null,
+          responsavel: c.responsavel ?? null,
+          data_abertura_portal: c.dataAberturaPortal ?? null,
+          campos_personalizados: c.camposPersonalizados ?? {},
         })
         .eq('id', id)
         .select('*')
@@ -210,34 +229,15 @@ export function useChamados(encerrados = false) {
       }
 
       if (data) {
-        const updatedChamado: Chamado = {
-          id: data.id,
-          titulo: data.titulo,
-          status: data.status as Chamado['status'],
-          estruturante: data.estruturante as 'PNCP' | 'PEN' | 'Outros',
-          nivel: data.nivel as 'N1' | 'N2' | 'N3',
-          acompanhamento: data.acompanhamento,
-          links: data.links || [],
-          dataCriacao: data.data_criacao,
-          dataAtualizacao: data.data_atualizacao,
-          dataLimite: data.data_limite,
-          assunto: data.assunto || undefined,
-          penProduto: data.pen_produto || undefined,
-          penModulo: data.pen_modulo || undefined,
-          penPo: data.pen_po || undefined,
-          penPoSubstituto: data.pen_po_substituto || undefined,
-          penRepresentanteTecnico: data.pen_representante_tecnico || undefined
-        };
+        const updatedChamado: Chamado = mapRowToChamado(data);
 
-        // Update in state if still visible in this list
         if ((encerrados && updatedChamado.status === 'resolvido') ||
             (!encerrados && updatedChamado.status !== 'resolvido')) {
           setChamados(chamados.map(chamado => chamado.id === id ? updatedChamado : chamado));
         } else {
-          // Remove from the current list if it doesn't belong anymore
           setChamados(chamados.filter(chamado => chamado.id !== id));
         }
-        
+
         return updatedChamado;
       }
     } catch (error) {
