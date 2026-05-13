@@ -115,142 +115,129 @@ const ChamadoCard: React.FC<ChamadoCardProps> = ({
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'agendados':
-        return 'bg-blue-500';
-      case 'agendados_planner':
-        return 'bg-purple-500';
+      case 'agendados': return 'bg-blue-500';
+      case 'agendados_planner': return 'bg-purple-500';
       case 'agendados_aguardando':
-        if (chamado.dataLimite && isAfter(new Date(), new Date(chamado.dataLimite))) {
-          return 'bg-red-600';
-        }
+        if (chamado.dataLimite && isAfter(new Date(), new Date(chamado.dataLimite))) return 'bg-red-600';
         return 'bg-yellow-500';
-      case 'em_andamento':
-        return 'bg-status-warning';
-      case 'resolvido':
-        return 'bg-status-success';
-      default:
-        return 'bg-gray-400';
+      case 'em_andamento': return 'bg-orange-500';
+      case 'resolvido': return 'bg-emerald-500';
+      default: return 'bg-gray-400';
+    }
+  };
+
+  const getStatusGradient = (status: string) => {
+    switch (status) {
+      case 'agendados': return 'from-blue-500/15 to-blue-500/0';
+      case 'agendados_planner': return 'from-purple-500/15 to-purple-500/0';
+      case 'agendados_aguardando':
+        if (chamado.dataLimite && isAfter(new Date(), new Date(chamado.dataLimite))) return 'from-red-500/20 to-red-500/0';
+        return 'from-yellow-500/15 to-yellow-500/0';
+      case 'em_andamento': return 'from-orange-500/15 to-orange-500/0';
+      case 'resolvido': return 'from-emerald-500/15 to-emerald-500/0';
+      default: return 'from-gray-500/10 to-gray-500/0';
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'agendados':
-        return 'Agendados';
-      case 'agendados_planner':
-        return 'Agendados PLANNER';
-      case 'agendados_aguardando':
-        return 'Aguardando devolutiva';
-      case 'em_andamento':
-        return 'Em Andamento';
-      case 'resolvido':
-        return 'Resolvido';
-      default:
-        return status;
+      case 'agendados': return 'Agendados';
+      case 'agendados_planner': return 'Agendados PLANNER';
+      case 'agendados_aguardando': return 'Aguardando devolutiva';
+      case 'em_andamento': return 'Em Andamento';
+      case 'resolvido': return 'Resolvido';
+      default: return status;
     }
   };
 
   const getEstruturanteBg = (estruturante: string) => {
     switch (estruturante) {
-      case 'PNCP':
-        return 'bg-estruturante-pncp/20 text-estruturante-pncp';
-      case 'PEN':
-        return 'bg-estruturante-pen/20 text-estruturante-pen';
-      default:
-        return 'bg-estruturante-other/20 text-estruturante-other';
+      case 'PNCP': return 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300';
+      case 'PEN': return 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300';
+      default: return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
     }
   };
 
   const getNivelBg = (nivel: string) => {
     switch (nivel) {
-      case 'N3':
-        return 'bg-status-error/20 text-status-error';
-      case 'N2':
-        return 'bg-status-warning/20 text-status-warning';
-      case 'N1':
-        return 'bg-status-info/20 text-status-info';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case 'N3': return 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300';
+      case 'N2': return 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300';
+      case 'N1': return 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300';
+      default: return 'bg-gray-100 text-gray-700';
     }
   };
 
-  const isCardDelayed = chamado.status === 'agendados_aguardando' && 
-                        chamado.dataLimite && 
+  const isCardDelayed = chamado.status === 'agendados_aguardando' &&
+                        chamado.dataLimite &&
                         isAfter(new Date(), new Date(chamado.dataLimite));
 
-  const cardClass = `glass p-6 rounded-xl shadow-sm hover-lift cursor-pointer ${isCardDelayed ? 'status-delayed' : ''}`;
-
   return (
-    <motion.div 
-      className={cardClass}
-      whileHover={{ scale: 1.02 }}
+    <motion.div
+      className={`group relative overflow-hidden rounded-2xl border bg-card p-5 shadow-sm hover:shadow-xl hover:border-primary/30 cursor-pointer transition-all ${isCardDelayed ? 'ring-1 ring-red-500/40' : ''}`}
+      whileHover={{ y: -2 }}
       onClick={() => onViewDetails && onViewDetails(chamado)}
     >
-      <div className="flex justify-between items-start mb-3">
-        <div className="flex items-center">
-          <div className={`w-3 h-3 rounded-full mr-3 ${getStatusColor(chamado.status)}`}></div>
-          <h3 className="text-lg font-semibold line-clamp-1">{chamado.titulo}</h3>
+      <div className={`absolute left-0 top-0 h-full w-1 ${getStatusColor(chamado.status)}`} />
+      <div className={`absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br ${getStatusGradient(chamado.status)} blur-2xl pointer-events-none`} />
+
+      <div className="relative flex justify-between items-start mb-3 gap-2">
+        <div className="flex-1 min-w-0">
+          {chamado.numeroChamado && (
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+              Nº {chamado.numeroChamado}
+            </div>
+          )}
+          <h3 className="text-base font-semibold leading-snug line-clamp-2">{chamado.titulo}</h3>
         </div>
-        <div className="flex space-x-1">
+        <div className="flex shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(chamado);
-            }}
-            className="p-1.5 rounded-full hover:bg-gray-200 transition-colors"
+            onClick={(e) => { e.stopPropagation(); onEdit(chamado); }}
+            className="p-1.5 rounded-lg hover:bg-muted transition-colors"
             aria-label="Editar"
           >
-            <Edit size={16} />
+            <Edit size={15} />
           </button>
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowDeleteModal(true);
-            }}
-            className="p-1.5 rounded-full hover:bg-red-100 hover:text-red-600 transition-colors"
+            onClick={(e) => { e.stopPropagation(); setShowDeleteModal(true); }}
+            className="p-1.5 rounded-lg hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950 transition-colors"
             aria-label="Excluir"
           >
-            <Trash2 size={16} />
+            <Trash2 size={15} />
           </button>
           {onFinish && chamado.status !== 'resolvido' && (
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onFinish(chamado.id);
-              }}
-              className="p-1.5 rounded-full hover:bg-green-100 hover:text-green-600 transition-colors"
+              onClick={(e) => { e.stopPropagation(); onFinish(chamado.id); }}
+              className="p-1.5 rounded-lg hover:bg-emerald-100 hover:text-emerald-600 dark:hover:bg-emerald-950 transition-colors"
               aria-label="Finalizar chamado"
             >
-              <CheckCircle size={16} />
+              <CheckCircle size={15} />
             </button>
           )}
           {onReopen && chamado.status === 'resolvido' && (
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onReopen(chamado.id);
-              }}
-              className="p-1.5 rounded-full hover:bg-blue-100 hover:text-blue-600 transition-colors"
+              onClick={(e) => { e.stopPropagation(); onReopen(chamado.id); }}
+              className="p-1.5 rounded-lg hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-blue-950 transition-colors"
               aria-label="Reabrir chamado"
             >
-              <RefreshCw size={16} />
+              <RefreshCw size={15} />
             </button>
           )}
         </div>
       </div>
-      
-      <div className="flex flex-wrap gap-2 mb-4">
-        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${getEstruturanteBg(chamado.estruturante)}`}>
+
+      <div className="relative flex flex-wrap gap-1.5 mb-3">
+        <span className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md ${getEstruturanteBg(chamado.estruturante)}`}>
           {chamado.estruturante}
         </span>
-        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${getNivelBg(chamado.nivel)}`}>
+        <span className={`inline-flex items-center text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md ${getNivelBg(chamado.nivel)}`}>
           {chamado.nivel}
         </span>
-        <span className={`text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100`}>
+        <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
+          <span className={`h-1.5 w-1.5 rounded-full ${getStatusColor(chamado.status)}`} />
           {getStatusText(chamado.status)}
         </span>
         {chamado.assunto && (
-          <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-indigo-100 text-indigo-700">
+          <span className="inline-flex items-center text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
             {chamado.assunto}
           </span>
         )}
