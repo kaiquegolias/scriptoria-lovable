@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import ChamadoCard, { Chamado } from './ChamadoCard';
 import ChamadoForm from './ChamadoForm';
 import ChamadoModal from './ChamadoModal';
@@ -8,6 +9,7 @@ import { Plus, Search, Download, Layers, Inbox, CheckCircle2, Clock, AlertTriang
 import { exportChamadosCSV } from '@/utils/exportChamados';
 import { useAuth } from '@/context/AuthContext';
 import { useChamados } from '@/hooks/useChamados';
+import { usePdfImport } from '@/context/PdfImportContext';
 
 interface ChamadoListProps {
   encerrados?: boolean;
@@ -32,6 +34,32 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false }) => {
   const [filtroStatus, setFiltroStatus] = useState<string>('');
   const [selectedChamado, setSelectedChamado] = useState<Chamado | null>(null);
   const [chamadoToClose, setChamadoToClose] = useState<Chamado | null>(null);
+
+  const { status: importStatus, pendingData } = usePdfImport();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Auto-open form when extraction is done and user navigates here, or via custom event
+  useEffect(() => {
+    if (encerrados) return;
+    const fromImport = searchParams.get('fromImport');
+    if ((fromImport === '1' || importStatus === 'done') && pendingData && !isFormOpen) {
+      setChamadoToEdit(undefined);
+      setIsFormOpen(true);
+      if (fromImport) {
+        searchParams.delete('fromImport');
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+    const handler = () => {
+      if (!isFormOpen) {
+        setChamadoToEdit(undefined);
+        setIsFormOpen(true);
+      }
+    };
+    window.addEventListener('open-chamado-form-from-import', handler);
+    return () => window.removeEventListener('open-chamado-form-from-import', handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [importStatus, pendingData, searchParams, encerrados]);
 
   const chamadosFiltrados = useMemo(
     () =>
