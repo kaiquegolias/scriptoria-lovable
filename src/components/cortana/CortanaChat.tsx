@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Trash2, StopCircle, Bot, User, Sparkles, Zap, Wifi, WifiOff, Search } from 'lucide-react';
+import { Send, Trash2, StopCircle, Bot, User, Sparkles, Zap, Wifi, WifiOff, Search, FileUp, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -7,6 +7,8 @@ import { useCortana, CortanaMessage } from '@/hooks/useCortana';
 import { useCortanaOffline } from '@/hooks/useCortanaOffline';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import { runMexxExtraction, ExtractedMexxData } from '@/utils/mexxPdfExtractor';
 
 const QUICK_PROMPTS = [
   { emoji: '🔍', text: 'Quais erros mais comuns existem na minha base?' },
