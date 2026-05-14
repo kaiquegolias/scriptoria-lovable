@@ -182,6 +182,30 @@ const CortanaChat: React.FC = () => {
           />
         </div>
         <div className="flex gap-1.5">
+          <input
+            ref={pdfInputRef}
+            type="file"
+            accept="application/pdf"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handlePdfUpload(f);
+              e.target.value = '';
+            }}
+          />
+          <Button
+            size="icon"
+            variant="outline"
+            onClick={() => pdfInputRef.current?.click()}
+            disabled={pdfLoading || active.isLoading}
+            title="Enviar PDF do MEXX para análise completa"
+            className="h-[52px] w-[52px] rounded-xl text-primary border-primary/30 hover:bg-primary/10 relative"
+          >
+            {pdfLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileUp className="h-5 w-5" />}
+            {pdfLoading && (
+              <span className="absolute -bottom-1 left-1 right-1 text-[9px] font-bold text-primary">{pdfProgress}%</span>
+            )}
+          </Button>
           {active.isLoading && mode === 'online' ? (
             <Button size="icon" variant="destructive" onClick={online.stopGeneration} className="h-[52px] w-[52px] rounded-xl shadow-sm">
               <StopCircle className="h-5 w-5" />
