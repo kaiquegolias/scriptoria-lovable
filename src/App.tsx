@@ -21,11 +21,14 @@ import Cortana from '@/pages/Cortana';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { PdfImportProvider } from '@/context/PdfImportContext';
+import PdfImportFloating from '@/components/chamados/PdfImportFloating';
 
 function App() {
   return (
     <Router>
       <ThemeProvider>
+        <PdfImportProvider>
         <div className="flex flex-col min-h-screen bg-background text-foreground">
           <Navbar />
           <main className="flex-1">
@@ -48,7 +51,9 @@ function App() {
           </main>
           <Footer />
           <Toaster position="bottom-right" />
+          <PdfImportFloating />
         </div>
+        </PdfImportProvider>
       </ThemeProvider>
     </Router>
   );

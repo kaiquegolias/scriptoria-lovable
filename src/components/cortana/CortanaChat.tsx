@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Trash2, StopCircle, Bot, User, Sparkles, Zap, Wifi, WifiOff, Search } from 'lucide-react';
+import { Send, Trash2, StopCircle, Bot, User, Sparkles, Zap, Wifi, WifiOff, Search, FileUp, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -7,6 +7,8 @@ import { useCortana, CortanaMessage } from '@/hooks/useCortana';
 import { useCortanaOffline } from '@/hooks/useCortanaOffline';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import { runMexxExtraction, ExtractedMexxData } from '@/utils/mexxPdfExtractor';
 
 const QUICK_PROMPTS = [
   { emoji: '🔍', text: 'Quais erros mais comuns existem na minha base?' },
@@ -22,8 +24,11 @@ const CortanaChat: React.FC = () => {
   const active = mode === 'online' ? online : offline;
 
   const [input, setInput] = useState('');
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -42,6 +47,62 @@ const CortanaChat: React.FC = () => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  const buildMexxPrompt = (d: ExtractedMexxData) => {
+    const campos = d.campos_personalizados && Object.keys(d.campos_personalizados).length
+      ? Object.entries(d.campos_personalizados).map(([k, v]) => `- **${k}:** ${v}`).join('\n')
+      : '_nenhum_';
+    return [
+      '📄 **Analise este chamado MEXX e responda completo.**',
+      '',
+      'Use a base de conhecimento (modelos de resposta, chamados resolvidos, KB) e estruture:',
+      '1. **Análise técnica** do problema relatado',
+      '2. **Solução sugerida** passo a passo',
+      '3. **Modelo de resposta formal** pronto para enviar ao usuário',
+      '4. **Fontes utilizadas** e nível de confiança (%)',
+      '',
+      '---',
+      `**Nº Chamado:** ${d.numero_chamado || 'N/I'}`,
+      `**Solicitante:** ${d.usuario_nome || 'N/I'} ${d.usuario_email ? `(${d.usuario_email})` : ''}`,
+      `**Órgão:** ${d.orgao || 'N/I'}`,
+      `**Categoria:** ${d.categoria || 'N/I'} | **Prioridade:** ${d.prioridade || 'N/I'}`,
+      `**Tipo:** ${d.tipo_chamado || 'N/I'} | **Time:** ${d.time_atendimento || 'N/I'}`,
+      `**SLA Atendimento:** ${d.sla_atendimento || 'N/I'} | **SLA Solução:** ${d.sla_solucao || 'N/I'}`,
+      `**Aberto em:** ${d.data_abertura || 'N/I'} | **Previsão:** ${d.previsao_solucao || 'N/I'}`,
+      '',
+      '**Descrição:**',
+      d.descricao || '_não informada_',
+      '',
+      '**Campos Personalizados:**',
+      campos,
+    ].join('\n');
+  };
+
+  const handlePdfUpload = async (file: File) => {
+    if (file.type !== 'application/pdf') {
+      toast.error('Selecione um arquivo PDF.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('PDF muito grande (máx 10MB).');
+      return;
+    }
+    setPdfLoading(true);
+    setPdfProgress(0);
+    const t = toast.loading('Analisando PDF do MEXX...');
+    try {
+      const { data } = await runMexxExtraction(file, (p) => setPdfProgress(p));
+      toast.success('PDF analisado. Cortana está respondendo...', { id: t });
+      if (mode !== 'online') setMode('online');
+      const prompt = buildMexxPrompt(data);
+      setTimeout(() => online.sendMessage(prompt), 50);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao processar PDF', { id: t });
+    } finally {
+      setPdfLoading(false);
+      setPdfProgress(0);
     }
   };
 
@@ -121,6 +182,30 @@ const CortanaChat: React.FC = () => {
           />
         </div>
         <div className="flex gap-1.5">
+          <input
+            ref={pdfInputRef}
+            type="file"
+            accept="application/pdf"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handlePdfUpload(f);
+              e.target.value = '';
+            }}
+          />
+          <Button
+            size="icon"
+            variant="outline"
+            onClick={() => pdfInputRef.current?.click()}
+            disabled={pdfLoading || active.isLoading}
+            title="Enviar PDF do MEXX para análise completa"
+            className="h-[52px] w-[52px] rounded-xl text-primary border-primary/30 hover:bg-primary/10 relative"
+          >
+            {pdfLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileUp className="h-5 w-5" />}
+            {pdfLoading && (
+              <span className="absolute -bottom-1 left-1 right-1 text-[9px] font-bold text-primary">{pdfProgress}%</span>
+            )}
+          </Button>
           {active.isLoading && mode === 'online' ? (
             <Button size="icon" variant="destructive" onClick={online.stopGeneration} className="h-[52px] w-[52px] rounded-xl shadow-sm">
               <StopCircle className="h-5 w-5" />
