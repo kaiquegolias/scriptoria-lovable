@@ -24,8 +24,11 @@ const CortanaChat: React.FC = () => {
   const active = mode === 'online' ? online : offline;
 
   const [input, setInput] = useState('');
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -44,6 +47,62 @@ const CortanaChat: React.FC = () => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  const buildMexxPrompt = (d: ExtractedMexxData) => {
+    const campos = d.campos_personalizados && Object.keys(d.campos_personalizados).length
+      ? Object.entries(d.campos_personalizados).map(([k, v]) => `- **${k}:** ${v}`).join('\n')
+      : '_nenhum_';
+    return [
+      '📄 **Analise este chamado MEXX e responda completo.**',
+      '',
+      'Use a base de conhecimento (modelos de resposta, chamados resolvidos, KB) e estruture:',
+      '1. **Análise técnica** do problema relatado',
+      '2. **Solução sugerida** passo a passo',
+      '3. **Modelo de resposta formal** pronto para enviar ao usuário',
+      '4. **Fontes utilizadas** e nível de confiança (%)',
+      '',
+      '---',
+      `**Nº Chamado:** ${d.numero_chamado || 'N/I'}`,
+      `**Solicitante:** ${d.usuario_nome || 'N/I'} ${d.usuario_email ? `(${d.usuario_email})` : ''}`,
+      `**Órgão:** ${d.orgao || 'N/I'}`,
+      `**Categoria:** ${d.categoria || 'N/I'} | **Prioridade:** ${d.prioridade || 'N/I'}`,
+      `**Tipo:** ${d.tipo_chamado || 'N/I'} | **Time:** ${d.time_atendimento || 'N/I'}`,
+      `**SLA Atendimento:** ${d.sla_atendimento || 'N/I'} | **SLA Solução:** ${d.sla_solucao || 'N/I'}`,
+      `**Aberto em:** ${d.data_abertura || 'N/I'} | **Previsão:** ${d.previsao_solucao || 'N/I'}`,
+      '',
+      '**Descrição:**',
+      d.descricao || '_não informada_',
+      '',
+      '**Campos Personalizados:**',
+      campos,
+    ].join('\n');
+  };
+
+  const handlePdfUpload = async (file: File) => {
+    if (file.type !== 'application/pdf') {
+      toast.error('Selecione um arquivo PDF.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('PDF muito grande (máx 10MB).');
+      return;
+    }
+    setPdfLoading(true);
+    setPdfProgress(0);
+    const t = toast.loading('Analisando PDF do MEXX...');
+    try {
+      const { data } = await runMexxExtraction(file, (p) => setPdfProgress(p));
+      toast.success('PDF analisado. Cortana está respondendo...', { id: t });
+      if (mode !== 'online') setMode('online');
+      const prompt = buildMexxPrompt(data);
+      setTimeout(() => online.sendMessage(prompt), 50);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao processar PDF', { id: t });
+    } finally {
+      setPdfLoading(false);
+      setPdfProgress(0);
     }
   };
 
