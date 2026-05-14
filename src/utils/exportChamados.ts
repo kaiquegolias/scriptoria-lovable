@@ -9,44 +9,46 @@ const STATUS_LABELS: Record<string, string> = {
   excluido: 'Excluído',
 };
 
+const escapeCSV = (val: unknown): string => {
+  const str = val == null ? '' : String(val);
+  if (!str) return '""';
+  const cleaned = str.replace(/\r?\n/g, ' ').replace(/\r/g, ' ');
+  return `"${cleaned.replace(/"/g, '""')}"`;
+};
+
+const formatDate = (dateStr: string | undefined | null): string => {
+  if (!dateStr) return '';
+  try {
+    return new Date(dateStr).toLocaleString('pt-BR');
+  } catch {
+    return '';
+  }
+};
+
+const formatCampos = (c?: Record<string, string>): string => {
+  if (!c) return '';
+  return Object.entries(c).map(([k, v]) => `${k}: ${v}`).join(' | ');
+};
+
 export function exportChamadosCSV(chamados: Chamado[], filename = 'chamados') {
+  if (!chamados || chamados.length === 0) {
+    console.warn('Nenhum chamado para exportar.');
+    return;
+  }
+
   const headers = [
-    'ID',
-    'Título',
-    'Status',
-    'Estruturante',
-    'Nível',
-    'Assunto',
-    'Acompanhamento',
-    'Produto PEN',
-    'Módulo PEN',
-    'PO',
-    'Links',
-    'Data Criação',
-    'Data Atualização',
-    'Data Limite',
+    'ID', 'Nº Chamado MEXX', 'Título', 'Status', 'Estruturante', 'Nível', 'Assunto',
+    'Acompanhamento', 'Produto PEN', 'Módulo PEN', 'PO', 'PO Substituto', 'Rep. Técnico',
+    'Solicitante', 'E-mail', 'Telefone', 'CPF', 'Órgão',
+    'Prioridade', 'Categoria', 'Tipo', 'Time Atendimento', 'Responsável',
+    'SLA Atendimento', 'SLA Solução', 'Tem Anexo', 'Descrição Completa',
+    'Campos Personalizados', 'Links',
+    'Data Abertura Portal', 'Previsão Solução', 'Data Criação', 'Data Atualização', 'Data Limite',
   ];
-
-  const escapeCSV = (val: unknown): string => {
-    const str = val == null ? '' : String(val);
-    if (!str) return '""';
-    // Replace line breaks with spaces to avoid breaking CSV rows
-    const cleaned = str.replace(/\r?\n/g, ' ').replace(/\r/g, ' ');
-    // Always wrap in quotes and escape inner quotes
-    return `"${cleaned.replace(/"/g, '""')}"`;
-  };
-
-  const formatDate = (dateStr: string | undefined | null): string => {
-    if (!dateStr) return '';
-    try {
-      return new Date(dateStr).toLocaleDateString('pt-BR');
-    } catch {
-      return '';
-    }
-  };
 
   const rows = chamados.map((c) => [
     c.id,
+    c.numeroChamado || '',
     c.titulo,
     STATUS_LABELS[c.status] || c.status,
     c.estruturante,
@@ -56,16 +58,34 @@ export function exportChamadosCSV(chamados: Chamado[], filename = 'chamados') {
     c.penProduto || '',
     c.penModulo || '',
     c.penPo || '',
+    c.penPoSubstituto || '',
+    c.penRepresentanteTecnico || '',
+    c.usuarioNome || '',
+    c.usuarioEmail || '',
+    c.usuarioTelefone || '',
+    c.usuarioCpf || '',
+    c.orgao || '',
+    c.prioridade || '',
+    c.categoria || '',
+    c.tipoChamado || '',
+    c.timeAtendimento || '',
+    c.responsavel || '',
+    c.slaAtendimento || '',
+    c.slaSolucao || '',
+    c.temAnexo == null ? '' : c.temAnexo ? 'Sim' : 'Não',
+    c.descricaoCompleta || '',
+    formatCampos(c.camposPersonalizados),
     (c.links || []).join(' | '),
+    formatDate(c.dataAberturaPortal),
+    formatDate(c.previsaoSolucao),
     formatDate(c.dataCriacao),
     formatDate(c.dataAtualizacao),
     formatDate(c.dataLimite),
   ]);
 
-  // Use semicolon separator for Excel/LibreOffice compatibility with pt-BR locale
   const csvContent =
     '\uFEFF' +
-    headers.map(h => escapeCSV(h)).join(';') +
+    headers.map(escapeCSV).join(';') +
     '\r\n' +
     rows.map((row) => row.map(escapeCSV).join(';')).join('\r\n');
 
