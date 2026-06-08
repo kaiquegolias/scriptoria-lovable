@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { supabase } from '@/integrations/supabase/client';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -18,189 +18,282 @@ const QUEUE_REASON: Record<string, string> = {
 };
 
 export interface ProductivityRange {
-  from: string; // yyyy-mm-dd
-  to: string;   // yyyy-mm-dd
-  userId?: string; // se omitido, todos
+  from: string;
+  to: string;
+  userId?: string;
 }
+
+const BRAND = 'FF2E7D32';
+const BRAND_LIGHT = 'FFE8F5E9';
+const ZEBRA = 'FFF7F9FC';
 
 const fmt = (d?: string | null) => (d ? new Date(d).toLocaleString('pt-BR') : '');
 
-const headerStyle = (ws: XLSX.WorkSheet, cols: number) => {
-  for (let C = 0; C < cols; C++) {
-    const addr = XLSX.utils.encode_cell({ r: 0, c: C });
-    if (ws[addr]) {
-      ws[addr].s = {
-        font: { bold: true, color: { rgb: 'FFFFFF' } },
-        fill: { fgColor: { rgb: '2E7D32' } },
-        alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+const styleHeaderRow = (row: ExcelJS.Row) => {
+  row.height = 32;
+  row.eachCell(cell => {
+    cell.font = { name: 'Calibri', bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BRAND } };
+    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FFB0B7C0' } },
+      left: { style: 'thin', color: { argb: 'FFB0B7C0' } },
+      right: { style: 'thin', color: { argb: 'FFB0B7C0' } },
+      bottom: { style: 'medium', color: { argb: BRAND } },
+    };
+  });
+};
+
+const styleBody = (ws: ExcelJS.Worksheet, startRow: number, endRow: number) => {
+  for (let r = startRow; r <= endRow; r++) {
+    const row = ws.getRow(r);
+    const zebra = (r - startRow) % 2 === 1;
+    row.height = 22;
+    row.eachCell({ includeEmpty: true }, cell => {
+      cell.font = { name: 'Calibri', size: 10, color: { argb: 'FF1F2937' } };
+      cell.alignment = { vertical: 'middle', wrapText: true, horizontal: 'left' };
+      cell.border = {
+        top: { style: 'hair', color: { argb: 'FFE5E7EB' } },
+        bottom: { style: 'hair', color: { argb: 'FFE5E7EB' } },
+        left: { style: 'hair', color: { argb: 'FFE5E7EB' } },
+        right: { style: 'hair', color: { argb: 'FFE5E7EB' } },
       };
-    }
+      if (zebra) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: ZEBRA } };
+    });
   }
+};
+
+const buildList = (ws: ExcelJS.Worksheet, rows: any[]) => {
+  ws.columns = [
+    { header: 'Nº', key: 'numero', width: 14 },
+    { header: 'Título', key: 'titulo', width: 42 },
+    { header: 'Status', key: 'status', width: 22 },
+    { header: 'Estruturante', key: 'estr', width: 14 },
+    { header: 'Produto', key: 'prod', width: 22 },
+    { header: 'PO', key: 'po', width: 22 },
+    { header: 'Responsável', key: 'resp', width: 22 },
+    { header: 'Criado em', key: 'criado', width: 20 },
+    { header: 'Atualizado em', key: 'atualizado', width: 20 },
+    { header: 'Data Limite', key: 'limite', width: 20 },
+  ];
+  styleHeaderRow(ws.getRow(1));
+  rows.forEach(c =>
+    ws.addRow({
+      numero: c.numero_chamado || '',
+      titulo: c.titulo,
+      status: STATUS_LABELS[c.status] || c.status,
+      estr: c.estruturante,
+      prod: c.pen_produto || '',
+      po: c.pen_po || '',
+      resp: c.responsavel || '',
+      criado: fmt(c.data_criacao),
+      atualizado: fmt(c.data_atualizacao),
+      limite: fmt(c.data_limite),
+    }),
+  );
+  styleBody(ws, 2, ws.rowCount);
+  ws.views = [{ state: 'frozen', ySplit: 1 }];
+  ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 10 } };
+};
+
+const downloadBlob = async (wb: ExcelJS.Workbook, filename: string) => {
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 };
 
 export async function exportProductivityXLSX(range: ProductivityRange) {
   const fromIso = new Date(range.from + 'T00:00:00').toISOString();
   const toIso = new Date(range.to + 'T23:59:59').toISOString();
 
-  // Fetch all chamados (we'll classify)
-  let chamadosQuery = supabase.from('chamados').select('*');
-  if (range.userId) chamadosQuery = chamadosQuery.eq('user_id', range.userId);
-  const { data: chamados, error: cErr } = await chamadosQuery;
-  if (cErr) throw cErr;
+  let q = supabase.from('chamados').select('*');
+  if (range.userId) q = q.eq('user_id', range.userId);
+  const { data: chamados, error } = await q;
+  if (error) throw error;
+  const all = chamados || [];
 
-  const allChamados = chamados || [];
+  const novos = all.filter(c => c.data_criacao >= fromIso && c.data_criacao <= toIso);
+  const encerrados = all.filter(c => c.status === 'resolvido' && c.data_atualizacao >= fromIso && c.data_atualizacao <= toIso);
+  const excluidos = all.filter(c => c.status === 'excluido' && c.data_exclusao && c.data_exclusao >= fromIso && c.data_exclusao <= toIso);
+  const atualizados = all.filter(c => c.data_atualizacao >= fromIso && c.data_atualizacao <= toIso && c.data_criacao < fromIso);
+  const fila = all.filter(c => c.status !== 'resolvido' && c.status !== 'excluido');
 
-  // Novos no período (data_criacao)
-  const novos = allChamados.filter(c => c.data_criacao >= fromIso && c.data_criacao <= toIso);
-
-  // Encerrados no período (status resolvido + data_atualizacao no período)
-  const encerrados = allChamados.filter(
-    c => c.status === 'resolvido' && c.data_atualizacao >= fromIso && c.data_atualizacao <= toIso
-  );
-
-  // Excluídos no período
-  const excluidos = allChamados.filter(
-    c => c.status === 'excluido' && c.data_exclusao && c.data_exclusao >= fromIso && c.data_exclusao <= toIso
-  );
-
-  // Atualizados (qualquer alteração no período, excluindo os criados no período)
-  const atualizados = allChamados.filter(
-    c => c.data_atualizacao >= fromIso && c.data_atualizacao <= toIso && c.data_criacao < fromIso
-  );
-
-  // Fila atual (ativos não resolvidos/excluídos)
-  const fila = allChamados.filter(c => c.status !== 'resolvido' && c.status !== 'excluido');
-
-  // Audit log no período
-  let auditQuery = supabase
-    .from('audit_log')
-    .select('*')
-    .gte('created_at', fromIso)
-    .lte('created_at', toIso)
-    .order('created_at', { ascending: false });
-  if (range.userId) auditQuery = auditQuery.eq('user_id', range.userId);
-  const { data: audit } = await auditQuery;
+  let aq = supabase.from('audit_log').select('*').gte('created_at', fromIso).lte('created_at', toIso).order('created_at', { ascending: false });
+  if (range.userId) aq = aq.eq('user_id', range.userId);
+  const { data: audit } = await aq;
   const auditRows = audit || [];
 
-  const wb = XLSX.utils.book_new();
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Thoth';
+  wb.created = new Date();
 
-  // ============ Sheet 1: Resumo ============
-  const filaPorMotivo: Record<string, number> = {};
-  fila.forEach(c => {
-    const motivo = QUEUE_REASON[c.status] || c.status;
-    filaPorMotivo[motivo] = (filaPorMotivo[motivo] || 0) + 1;
-  });
+  // ===== Resumo =====
+  const ws = wb.addWorksheet('Resumo', { views: [{ showGridLines: false }] });
+  ws.columns = [{ width: 48 }, { width: 22 }];
 
-  const filaPorResponsavel: Record<string, number> = {};
-  fila.forEach(c => {
-    const r = c.responsavel || '— sem responsável —';
-    filaPorResponsavel[r] = (filaPorResponsavel[r] || 0) + 1;
-  });
+  ws.mergeCells('A1:B1');
+  const title = ws.getCell('A1');
+  title.value = 'Relatório de Produtividade';
+  title.font = { name: 'Calibri', bold: true, size: 18, color: { argb: 'FFFFFFFF' } };
+  title.alignment = { vertical: 'middle', horizontal: 'center' };
+  title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BRAND } };
+  ws.getRow(1).height = 40;
 
-  const resumo: (string | number)[][] = [
-    ['Relatório de Produtividade'],
-    [],
+  let row = 3;
+  const info: [string, string | number][] = [
     ['Período', `${new Date(range.from).toLocaleDateString('pt-BR')} até ${new Date(range.to).toLocaleDateString('pt-BR')}`],
     ['Gerado em', new Date().toLocaleString('pt-BR')],
-    [],
-    ['Indicador', 'Quantidade'],
-    ['Chamados novos (criados no período)', novos.length],
-    ['Chamados encerrados no período', encerrados.length],
-    ['Chamados excluídos no período', excluidos.length],
-    ['Chamados atualizados no período (sem contar novos)', atualizados.length],
-    ['Total em fila (não resolvidos)', fila.length],
-    ['Eventos de auditoria no período', auditRows.length],
-    [],
-    ['Fila por motivo', 'Quantidade'],
-    ...Object.entries(filaPorMotivo).sort((a, b) => b[1] - a[1]),
-    [],
-    ['Fila por responsável', 'Quantidade'],
-    ...Object.entries(filaPorResponsavel).sort((a, b) => b[1] - a[1]),
   ];
-  const wsResumo = XLSX.utils.aoa_to_sheet(resumo);
-  wsResumo['!cols'] = [{ wch: 48 }, { wch: 16 }];
-  wsResumo['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }];
-  if (wsResumo['A1']) {
-    wsResumo['A1'].s = {
-      font: { bold: true, sz: 16, color: { rgb: 'FFFFFF' } },
-      fill: { fgColor: { rgb: '2E7D32' } },
-      alignment: { horizontal: 'center' },
-    };
-  }
-  XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo');
+  info.forEach(([k, v]) => {
+    const r = ws.getRow(row++);
+    r.getCell(1).value = k;
+    r.getCell(2).value = v;
+    r.getCell(1).font = { bold: true, color: { argb: BRAND } };
+    r.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BRAND_LIGHT } };
+  });
 
-  // Helper to build chamados list sheet
-  const buildList = (rows: any[]) => {
-    const headers = ['Nº', 'Título', 'Status', 'Estruturante', 'Produto', 'PO', 'Responsável', 'Criado em', 'Atualizado em', 'Data Limite'];
-    const aoa = [
-      headers,
-      ...rows.map(c => [
-        c.numero_chamado || '',
-        c.titulo,
-        STATUS_LABELS[c.status] || c.status,
-        c.estruturante,
-        c.pen_produto || '',
-        c.pen_po || '',
-        c.responsavel || '',
-        fmt(c.data_criacao),
-        fmt(c.data_atualizacao),
-        fmt(c.data_limite),
-      ]),
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = [14, 42, 22, 14, 22, 22, 22, 20, 20, 20].map(w => ({ wch: w }));
-    (ws as any)['!views'] = [{ state: 'frozen', ySplit: 1 }];
-    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } }) };
-    headerStyle(ws, headers.length);
-    return ws;
+  row++;
+  const kpiHeader = ws.getRow(row++);
+  kpiHeader.getCell(1).value = 'Indicador';
+  kpiHeader.getCell(2).value = 'Quantidade';
+  styleHeaderRow(kpiHeader);
+
+  const kpis: [string, number, string][] = [
+    ['Chamados novos (criados no período)', novos.length, 'FFE8F5E9'],
+    ['Chamados encerrados no período', encerrados.length, 'FFDCE6F1'],
+    ['Chamados excluídos no período', excluidos.length, 'FFFFCDD2'],
+    ['Atualizados no período (sem contar novos)', atualizados.length, 'FFFFF8E1'],
+    ['Total em fila (não resolvidos)', fila.length, 'FFE3F2FD'],
+    ['Eventos de auditoria no período', auditRows.length, 'FFEDE7F6'],
+  ];
+  kpis.forEach(([k, v, color]) => {
+    const r = ws.getRow(row++);
+    r.height = 26;
+    r.getCell(1).value = k;
+    r.getCell(2).value = v;
+    r.getCell(1).font = { bold: true, size: 11 };
+    r.getCell(2).font = { bold: true, size: 12, color: { argb: 'FF1F2937' } };
+    r.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
+    r.eachCell(c => {
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
+      c.border = {
+        top: { style: 'thin', color: { argb: 'FFD0D7DE' } },
+        bottom: { style: 'thin', color: { argb: 'FFD0D7DE' } },
+        left: { style: 'thin', color: { argb: 'FFD0D7DE' } },
+        right: { style: 'thin', color: { argb: 'FFD0D7DE' } },
+      };
+    });
+  });
+
+  const addSection = (titleText: string, data: [string, number][]) => {
+    row++;
+    const r = ws.getRow(row++);
+    r.getCell(1).value = titleText;
+    r.getCell(2).value = 'Quantidade';
+    styleHeaderRow(r);
+    const start = row;
+    data.sort((a, b) => b[1] - a[1]).forEach(([k, v]) => {
+      const rr = ws.getRow(row++);
+      rr.getCell(1).value = k;
+      rr.getCell(2).value = v;
+      rr.getCell(2).alignment = { horizontal: 'right' };
+    });
+    styleBody(ws, start, row - 1);
   };
 
-  XLSX.utils.book_append_sheet(wb, buildList(novos), 'Novos');
-  XLSX.utils.book_append_sheet(wb, buildList(encerrados), 'Encerrados');
-  XLSX.utils.book_append_sheet(wb, buildList(excluidos), 'Excluídos');
-  XLSX.utils.book_append_sheet(wb, buildList(atualizados), 'Atualizados');
+  const filaPorMotivo: Record<string, number> = {};
+  fila.forEach(c => {
+    const m = QUEUE_REASON[c.status] || c.status;
+    filaPorMotivo[m] = (filaPorMotivo[m] || 0) + 1;
+  });
+  const filaPorResp: Record<string, number> = {};
+  fila.forEach(c => {
+    const r = c.responsavel || '— sem responsável —';
+    filaPorResp[r] = (filaPorResp[r] || 0) + 1;
+  });
 
-  // Fila com motivo
-  const filaHeaders = ['Nº', 'Título', 'Status / Motivo na fila', 'Responsável', 'Produto', 'Data Limite', 'Dias parado'];
+  addSection('Fila por motivo', Object.entries(filaPorMotivo));
+  addSection('Fila por responsável', Object.entries(filaPorResp));
+
+  // ===== Listas =====
+  buildList(wb.addWorksheet('Novos'), novos);
+  buildList(wb.addWorksheet('Encerrados'), encerrados);
+  buildList(wb.addWorksheet('Excluídos'), excluidos);
+  buildList(wb.addWorksheet('Atualizados'), atualizados);
+
+  // Fila atual com dias parado
+  const wsFila = wb.addWorksheet('Fila Atual');
+  wsFila.columns = [
+    { header: 'Nº', key: 'numero', width: 14 },
+    { header: 'Título', key: 'titulo', width: 42 },
+    { header: 'Motivo na fila', key: 'motivo', width: 36 },
+    { header: 'Responsável', key: 'resp', width: 22 },
+    { header: 'Produto', key: 'prod', width: 22 },
+    { header: 'Data Limite', key: 'limite', width: 20 },
+    { header: 'Dias parado', key: 'dias', width: 14 },
+  ];
+  styleHeaderRow(wsFila.getRow(1));
   const now = Date.now();
-  const filaAoa = [
-    filaHeaders,
-    ...fila.map(c => {
-      const updated = new Date(c.data_atualizacao).getTime();
-      const dias = Math.floor((now - updated) / (1000 * 60 * 60 * 24));
-      return [
-        c.numero_chamado || '',
-        c.titulo,
-        QUEUE_REASON[c.status] || STATUS_LABELS[c.status] || c.status,
-        c.responsavel || '',
-        c.pen_produto || '',
-        fmt(c.data_limite),
-        dias,
-      ];
-    }),
-  ];
-  const wsFila = XLSX.utils.aoa_to_sheet(filaAoa);
-  wsFila['!cols'] = [14, 42, 32, 22, 22, 20, 12].map(w => ({ wch: w }));
-  (wsFila as any)['!views'] = [{ state: 'frozen', ySplit: 1 }];
-  wsFila['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 0, c: filaHeaders.length - 1 } }) };
-  headerStyle(wsFila, filaHeaders.length);
-  XLSX.utils.book_append_sheet(wb, wsFila, 'Fila Atual');
+  fila.forEach(c => {
+    const updated = new Date(c.data_atualizacao).getTime();
+    const dias = Math.floor((now - updated) / 86400000);
+    wsFila.addRow({
+      numero: c.numero_chamado || '',
+      titulo: c.titulo,
+      motivo: QUEUE_REASON[c.status] || STATUS_LABELS[c.status] || c.status,
+      resp: c.responsavel || '',
+      prod: c.pen_produto || '',
+      limite: fmt(c.data_limite),
+      dias,
+    });
+  });
+  styleBody(wsFila, 2, wsFila.rowCount);
+  // Color days-idle column
+  for (let r = 2; r <= wsFila.rowCount; r++) {
+    const cell = wsFila.getRow(r).getCell(7);
+    const d = Number(cell.value) || 0;
+    const color = d > 14 ? 'FFFFCDD2' : d > 7 ? 'FFFFF8E1' : 'FFE8F5E9';
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
+    cell.font = { bold: true };
+    cell.alignment = { horizontal: 'center' };
+  }
+  wsFila.views = [{ state: 'frozen', ySplit: 1 }];
+  wsFila.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 7 } };
 
-  // Audit log
-  const auditHeaders = ['Data', 'Usuário', 'Ação', 'Entidade', 'ID Entidade'];
-  const auditAoa = [
-    auditHeaders,
-    ...auditRows.map(a => [fmt(a.created_at), a.user_email || '', a.action, a.entity_type, a.entity_id || '']),
+  // Auditoria
+  const wsAudit = wb.addWorksheet('Auditoria');
+  wsAudit.columns = [
+    { header: 'Data', key: 'data', width: 22 },
+    { header: 'Usuário', key: 'user', width: 30 },
+    { header: 'Ação', key: 'acao', width: 26 },
+    { header: 'Entidade', key: 'ent', width: 18 },
+    { header: 'ID Entidade', key: 'eid', width: 38 },
   ];
-  const wsAudit = XLSX.utils.aoa_to_sheet(auditAoa);
-  wsAudit['!cols'] = [20, 30, 24, 18, 38].map(w => ({ wch: w }));
-  (wsAudit as any)['!views'] = [{ state: 'frozen', ySplit: 1 }];
-  wsAudit['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 0, c: auditHeaders.length - 1 } }) };
-  headerStyle(wsAudit, auditHeaders.length);
-  XLSX.utils.book_append_sheet(wb, wsAudit, 'Auditoria');
+  styleHeaderRow(wsAudit.getRow(1));
+  auditRows.forEach(a =>
+    wsAudit.addRow({
+      data: fmt(a.created_at),
+      user: a.user_email || '',
+      acao: a.action,
+      ent: a.entity_type,
+      eid: a.entity_id || '',
+    }),
+  );
+  styleBody(wsAudit, 2, wsAudit.rowCount);
+  wsAudit.views = [{ state: 'frozen', ySplit: 1 }];
+  wsAudit.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 5 } };
 
   const stamp = new Date().toISOString().slice(0, 10);
-  XLSX.writeFile(wb, `produtividade_${stamp}.xlsx`);
+  await downloadBlob(wb, `produtividade_${stamp}.xlsx`);
 
   return {
     novos: novos.length,

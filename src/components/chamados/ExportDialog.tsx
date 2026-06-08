@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { X, Download, FileSpreadsheet, BarChart3, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Chamado } from './ChamadoCard';
@@ -44,12 +44,17 @@ const ExportDialog: React.FC<Props> = ({ open, onClose, chamados, encerrados }) 
     [chamados]
   );
 
+  // Always reset to Chamados tab when the dialog opens
+  useEffect(() => {
+    if (open) setTab('chamados');
+  }, [open]);
+
   if (!open) return null;
 
   const handleExportChamados = async () => {
     try {
       setLoading(true);
-      exportChamadosXLSX(
+      await exportChamadosXLSX(
         chamados,
         { dateField, dateFrom, dateTo, produto, estruturante },
         encerrados ? 'chamados_encerrados' : 'chamados'
