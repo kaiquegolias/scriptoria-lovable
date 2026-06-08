@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { Chamado } from '@/components/chamados/ChamadoCard';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -10,251 +10,303 @@ const STATUS_LABELS: Record<string, string> = {
   excluido: 'Excluído',
 };
 
-const formatDate = (dateStr?: string | null): string => {
-  if (!dateStr) return '';
-  try {
-    return new Date(dateStr).toLocaleString('pt-BR');
-  } catch {
-    return '';
-  }
+const STATUS_COLORS: Record<string, string> = {
+  agendados: 'FFE3F2FD',
+  agendados_planner: 'FFE1F5FE',
+  agendados_aguardando: 'FFFFF8E1',
+  em_andamento: 'FFE8F5E9',
+  resolvido: 'FFC8E6C9',
+  excluido: 'FFFFCDD2',
 };
 
-const formatDateOnly = (dateStr?: string | null): string => {
-  if (!dateStr) return '';
-  try {
-    return new Date(dateStr).toLocaleDateString('pt-BR');
-  } catch {
-    return '';
-  }
-};
+const fmt = (d?: string | null) =>
+  d ? new Date(d).toLocaleString('pt-BR') : '';
 
-const formatCampos = (c?: Record<string, string>): string => {
-  if (!c) return '';
-  return Object.entries(c).map(([k, v]) => `${k}: ${v}`).join('\n');
-};
+const formatCampos = (c?: Record<string, string>): string =>
+  c ? Object.entries(c).map(([k, v]) => `${k}: ${v}`).join('\n') : '';
 
 export interface ExportFilters {
   dateField?: 'dataCriacao' | 'dataAtualizacao' | 'dataAberturaPortal';
-  dateFrom?: string; // yyyy-mm-dd
+  dateFrom?: string;
   dateTo?: string;
-  produto?: string; // PEN produto, '' = todos
+  produto?: string;
   estruturante?: string;
 }
 
-export const applyExportFilters = (chamados: Chamado[], filters: ExportFilters): Chamado[] => {
-  let result = chamados;
-  const field = filters.dateField || 'dataCriacao';
-
-  if (filters.dateFrom) {
-    const from = new Date(filters.dateFrom + 'T00:00:00');
-    result = result.filter(c => {
-      const v = c[field];
-      return v && new Date(v) >= from;
-    });
+export const applyExportFilters = (chamados: Chamado[], f: ExportFilters): Chamado[] => {
+  let r = chamados;
+  const field = f.dateField || 'dataCriacao';
+  if (f.dateFrom) {
+    const from = new Date(f.dateFrom + 'T00:00:00');
+    r = r.filter(c => c[field] && new Date(c[field] as string) >= from);
   }
-  if (filters.dateTo) {
-    const to = new Date(filters.dateTo + 'T23:59:59');
-    result = result.filter(c => {
-      const v = c[field];
-      return v && new Date(v) <= to;
-    });
+  if (f.dateTo) {
+    const to = new Date(f.dateTo + 'T23:59:59');
+    r = r.filter(c => c[field] && new Date(c[field] as string) <= to);
   }
-  if (filters.produto) {
-    result = result.filter(c => (c.penProduto || '').toLowerCase() === filters.produto!.toLowerCase());
-  }
-  if (filters.estruturante) {
-    result = result.filter(c => c.estruturante === filters.estruturante);
-  }
-  return result;
+  if (f.produto) r = r.filter(c => (c.penProduto || '').toLowerCase() === f.produto!.toLowerCase());
+  if (f.estruturante) r = r.filter(c => c.estruturante === f.estruturante);
+  return r;
 };
 
-const HEADERS = [
-  'Nº Chamado', 'Título', 'Status', 'Estruturante', 'Nível', 'Assunto',
-  'Produto PEN', 'Módulo PEN', 'PO', 'PO Substituto', 'Rep. Técnico',
-  'Solicitante', 'E-mail', 'Telefone', 'CPF', 'Órgão',
-  'Prioridade', 'Categoria', 'Tipo', 'Time', 'Responsável',
-  'SLA Atendimento', 'SLA Solução', 'Tem Anexo',
-  'Data Abertura Portal', 'Data Criação', 'Última Atualização',
-  'Data Limite', 'Previsão Solução',
-  'Acompanhamento', 'Descrição Completa', 'Campos Personalizados', 'Links',
-];
+// ---------- Styling helpers ----------
+const BRAND = 'FF1F4E78';
+const BRAND_LIGHT = 'FFDCE6F1';
+const ZEBRA = 'FFF7F9FC';
 
-const COL_WIDTHS = [
-  14, 42, 22, 14, 8, 22,
-  22, 22, 22, 22, 22,
-  26, 28, 16, 16, 22,
-  14, 18, 16, 18, 22,
-  18, 18, 10,
-  20, 20, 20, 20, 20,
-  50, 60, 40, 40,
-];
+const styleHeaderRow = (row: ExcelJS.Row, fill = BRAND) => {
+  row.height = 32;
+  row.eachCell(cell => {
+    cell.font = { name: 'Calibri', bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } };
+    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FFB0B7C0' } },
+      left: { style: 'thin', color: { argb: 'FFB0B7C0' } },
+      right: { style: 'thin', color: { argb: 'FFB0B7C0' } },
+      bottom: { style: 'medium', color: { argb: BRAND } },
+    };
+  });
+};
 
-const chamadoToRow = (c: Chamado) => [
-  c.numeroChamado || '',
-  c.titulo,
-  STATUS_LABELS[c.status] || c.status,
-  c.estruturante,
-  c.nivel,
-  c.assunto || '',
-  c.penProduto || '',
-  c.penModulo || '',
-  c.penPo || '',
-  c.penPoSubstituto || '',
-  c.penRepresentanteTecnico || '',
-  c.usuarioNome || '',
-  c.usuarioEmail || '',
-  c.usuarioTelefone || '',
-  c.usuarioCpf || '',
-  c.orgao || '',
-  c.prioridade || '',
-  c.categoria || '',
-  c.tipoChamado || '',
-  c.timeAtendimento || '',
-  c.responsavel || '',
-  c.slaAtendimento || '',
-  c.slaSolucao || '',
-  c.temAnexo == null ? '' : c.temAnexo ? 'Sim' : 'Não',
-  formatDate(c.dataAberturaPortal),
-  formatDate(c.dataCriacao),
-  formatDate(c.dataAtualizacao),
-  formatDate(c.dataLimite),
-  formatDate(c.previsaoSolucao),
-  c.acompanhamento,
-  c.descricaoCompleta || '',
-  formatCampos(c.camposPersonalizados),
-  (c.links || []).join('\n'),
-];
-
-const styleHeader = (ws: XLSX.WorkSheet, headerLen: number) => {
-  // Apply basic styling: bold + fill on header row. xlsx (community) limits styles, but cell formatting works.
-  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-  for (let C = 0; C < headerLen; C++) {
-    const addr = XLSX.utils.encode_cell({ r: 0, c: C });
-    const cell = ws[addr];
-    if (cell) {
-      cell.s = {
-        font: { bold: true, color: { rgb: 'FFFFFF' } },
-        fill: { fgColor: { rgb: '1F4E78' } },
-        alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
-        border: {
-          top: { style: 'thin', color: { rgb: 'CCCCCC' } },
-          bottom: { style: 'thin', color: { rgb: 'CCCCCC' } },
-        },
+const styleBody = (
+  ws: ExcelJS.Worksheet,
+  startRow: number,
+  endRow: number,
+  statusCol?: number,
+) => {
+  for (let r = startRow; r <= endRow; r++) {
+    const row = ws.getRow(r);
+    const zebra = (r - startRow) % 2 === 1;
+    row.height = 22;
+    row.eachCell({ includeEmpty: true }, (cell, col) => {
+      cell.font = { name: 'Calibri', size: 10, color: { argb: 'FF1F2937' } };
+      cell.alignment = { vertical: 'middle', wrapText: true, horizontal: 'left' };
+      cell.border = {
+        top: { style: 'hair', color: { argb: 'FFE5E7EB' } },
+        bottom: { style: 'hair', color: { argb: 'FFE5E7EB' } },
+        left: { style: 'hair', color: { argb: 'FFE5E7EB' } },
+        right: { style: 'hair', color: { argb: 'FFE5E7EB' } },
       };
-    }
-  }
-  // Wrap text on all body cells
-  for (let R = 1; R <= range.e.r; R++) {
-    for (let C = 0; C <= range.e.c; C++) {
-      const addr = XLSX.utils.encode_cell({ r: R, c: C });
-      const cell = ws[addr];
-      if (cell) {
-        cell.s = {
-          alignment: { vertical: 'top', wrapText: true },
-        };
+      if (zebra) {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: ZEBRA } };
       }
-    }
+      // Status colored chip
+      if (statusCol && col === statusCol) {
+        const val = String(cell.value || '');
+        const key = Object.keys(STATUS_LABELS).find(k => STATUS_LABELS[k] === val);
+        if (key && STATUS_COLORS[key]) {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: STATUS_COLORS[key] } };
+          cell.font = { ...cell.font, bold: true };
+          cell.alignment = { ...cell.alignment, horizontal: 'center' };
+        }
+      }
+    });
   }
 };
 
-const buildSheet = (rows: (string | number)[][], headers = HEADERS, widths = COL_WIDTHS) => {
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-  ws['!cols'] = widths.map(w => ({ wch: w }));
-  ws['!rows'] = [{ hpt: 32 }];
-  ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } }) };
-  ws['!freeze'] = { xSplit: 0, ySplit: 1 };
-  // Freeze pane via SheetJS uses '!views'
-  (ws as any)['!views'] = [{ state: 'frozen', ySplit: 1 }];
-  styleHeader(ws, headers.length);
-  return ws;
+// ---------- Sheet builders ----------
+interface ColDef { header: string; key: string; width: number; }
+
+const COLS: ColDef[] = [
+  { header: 'Nº Chamado', key: 'numeroChamado', width: 14 },
+  { header: 'Título', key: 'titulo', width: 42 },
+  { header: 'Status', key: 'status', width: 22 },
+  { header: 'Estruturante', key: 'estruturante', width: 14 },
+  { header: 'Nível', key: 'nivel', width: 9 },
+  { header: 'Assunto', key: 'assunto', width: 22 },
+  { header: 'Produto PEN', key: 'penProduto', width: 22 },
+  { header: 'Módulo PEN', key: 'penModulo', width: 22 },
+  { header: 'PO', key: 'penPo', width: 22 },
+  { header: 'PO Substituto', key: 'penPoSubstituto', width: 22 },
+  { header: 'Rep. Técnico', key: 'penRepresentanteTecnico', width: 22 },
+  { header: 'Solicitante', key: 'usuarioNome', width: 26 },
+  { header: 'E-mail', key: 'usuarioEmail', width: 28 },
+  { header: 'Telefone', key: 'usuarioTelefone', width: 16 },
+  { header: 'CPF', key: 'usuarioCpf', width: 16 },
+  { header: 'Órgão', key: 'orgao', width: 22 },
+  { header: 'Prioridade', key: 'prioridade', width: 14 },
+  { header: 'Categoria', key: 'categoria', width: 18 },
+  { header: 'Tipo', key: 'tipoChamado', width: 16 },
+  { header: 'Time', key: 'timeAtendimento', width: 18 },
+  { header: 'Responsável', key: 'responsavel', width: 22 },
+  { header: 'SLA Atendimento', key: 'slaAtendimento', width: 18 },
+  { header: 'SLA Solução', key: 'slaSolucao', width: 18 },
+  { header: 'Anexo', key: 'temAnexo', width: 9 },
+  { header: 'Abertura Portal', key: 'dataAberturaPortal', width: 20 },
+  { header: 'Criação', key: 'dataCriacao', width: 20 },
+  { header: 'Atualização', key: 'dataAtualizacao', width: 20 },
+  { header: 'Data Limite', key: 'dataLimite', width: 20 },
+  { header: 'Previsão Solução', key: 'previsaoSolucao', width: 20 },
+  { header: 'Último Acompanhamento', key: 'acompanhamento', width: 50 },
+  { header: 'Descrição Completa', key: 'descricaoCompleta', width: 60 },
+  { header: 'Campos Personalizados', key: 'camposPersonalizados', width: 40 },
+  { header: 'Links', key: 'links', width: 40 },
+];
+
+const rowFromChamado = (c: Chamado) => ({
+  numeroChamado: c.numeroChamado || '',
+  titulo: c.titulo,
+  status: STATUS_LABELS[c.status] || c.status,
+  estruturante: c.estruturante,
+  nivel: c.nivel,
+  assunto: c.assunto || '',
+  penProduto: c.penProduto || '',
+  penModulo: c.penModulo || '',
+  penPo: c.penPo || '',
+  penPoSubstituto: c.penPoSubstituto || '',
+  penRepresentanteTecnico: c.penRepresentanteTecnico || '',
+  usuarioNome: c.usuarioNome || '',
+  usuarioEmail: c.usuarioEmail || '',
+  usuarioTelefone: c.usuarioTelefone || '',
+  usuarioCpf: c.usuarioCpf || '',
+  orgao: c.orgao || '',
+  prioridade: c.prioridade || '',
+  categoria: c.categoria || '',
+  tipoChamado: c.tipoChamado || '',
+  timeAtendimento: c.timeAtendimento || '',
+  responsavel: c.responsavel || '',
+  slaAtendimento: c.slaAtendimento || '',
+  slaSolucao: c.slaSolucao || '',
+  temAnexo: c.temAnexo == null ? '' : c.temAnexo ? 'Sim' : 'Não',
+  dataAberturaPortal: fmt(c.dataAberturaPortal),
+  dataCriacao: fmt(c.dataCriacao),
+  dataAtualizacao: fmt(c.dataAtualizacao),
+  dataLimite: fmt(c.dataLimite),
+  previsaoSolucao: fmt(c.previsaoSolucao),
+  acompanhamento: c.acompanhamento,
+  descricaoCompleta: c.descricaoCompleta || '',
+  camposPersonalizados: formatCampos(c.camposPersonalizados),
+  links: (c.links || []).join('\n'),
+});
+
+const buildListSheet = (ws: ExcelJS.Worksheet, chamados: Chamado[]) => {
+  ws.columns = COLS.map(c => ({ header: c.header, key: c.key, width: c.width }));
+  styleHeaderRow(ws.getRow(1));
+  chamados.forEach(c => ws.addRow(rowFromChamado(c)));
+  const statusCol = COLS.findIndex(c => c.key === 'status') + 1;
+  styleBody(ws, 2, ws.rowCount, statusCol);
+  ws.views = [{ state: 'frozen', ySplit: 1 }];
+  ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: COLS.length } };
 };
 
-const summarySheet = (chamados: Chamado[], filters: ExportFilters) => {
+const buildSummarySheet = (ws: ExcelJS.Worksheet, chamados: Chamado[], filters: ExportFilters) => {
   const byStatus: Record<string, number> = {};
-  const byEstruturante: Record<string, number> = {};
-  const byProduto: Record<string, number> = {};
-  const byResponsavel: Record<string, number> = {};
-
+  const byEstr: Record<string, number> = {};
+  const byProd: Record<string, number> = {};
+  const byResp: Record<string, number> = {};
   chamados.forEach(c => {
     const s = STATUS_LABELS[c.status] || c.status;
     byStatus[s] = (byStatus[s] || 0) + 1;
-    byEstruturante[c.estruturante] = (byEstruturante[c.estruturante] || 0) + 1;
-    if (c.penProduto) byProduto[c.penProduto] = (byProduto[c.penProduto] || 0) + 1;
-    if (c.responsavel) byResponsavel[c.responsavel] = (byResponsavel[c.responsavel] || 0) + 1;
+    byEstr[c.estruturante] = (byEstr[c.estruturante] || 0) + 1;
+    if (c.penProduto) byProd[c.penProduto] = (byProd[c.penProduto] || 0) + 1;
+    if (c.responsavel) byResp[c.responsavel] = (byResp[c.responsavel] || 0) + 1;
   });
 
-  const aoa: (string | number)[][] = [
-    ['Resumo da Exportação'],
-    [],
+  ws.columns = [{ width: 44 }, { width: 18 }];
+
+  // Title
+  ws.mergeCells('A1:B1');
+  const title = ws.getCell('A1');
+  title.value = 'Resumo da Exportação de Chamados';
+  title.font = { name: 'Calibri', bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
+  title.alignment = { vertical: 'middle', horizontal: 'center' };
+  title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BRAND } };
+  ws.getRow(1).height = 36;
+
+  let row = 3;
+  const info: [string, string | number][] = [
     ['Gerado em', new Date().toLocaleString('pt-BR')],
     ['Total de chamados', chamados.length],
     ['Período', `${filters.dateFrom || '—'} até ${filters.dateTo || '—'}`],
     ['Campo de data', filters.dateField || 'dataCriacao'],
     ['Filtro produto', filters.produto || 'Todos'],
     ['Filtro estruturante', filters.estruturante || 'Todos'],
-    [],
-    ['Por Status', 'Quantidade'],
-    ...Object.entries(byStatus).sort((a, b) => b[1] - a[1]),
-    [],
-    ['Por Estruturante', 'Quantidade'],
-    ...Object.entries(byEstruturante).sort((a, b) => b[1] - a[1]),
-    [],
-    ['Por Produto PEN', 'Quantidade'],
-    ...Object.entries(byProduto).sort((a, b) => b[1] - a[1]),
-    [],
-    ['Por Responsável', 'Quantidade'],
-    ...Object.entries(byResponsavel).sort((a, b) => b[1] - a[1]),
   ];
+  info.forEach(([k, v]) => {
+    const r = ws.getRow(row++);
+    r.getCell(1).value = k;
+    r.getCell(2).value = v;
+    r.getCell(1).font = { bold: true, color: { argb: BRAND } };
+    r.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BRAND_LIGHT } };
+    r.getCell(2).alignment = { horizontal: 'left' };
+  });
 
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = [{ wch: 38 }, { wch: 16 }];
-  ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }];
-  // Style title
-  const titleCell = ws['A1'];
-  if (titleCell) {
-    titleCell.s = {
-      font: { bold: true, sz: 16, color: { rgb: 'FFFFFF' } },
-      fill: { fgColor: { rgb: '1F4E78' } },
-      alignment: { horizontal: 'center', vertical: 'center' },
-    };
-  }
-  return ws;
+  const addSection = (title: string, data: [string, number][]) => {
+    row++;
+    const r = ws.getRow(row++);
+    r.getCell(1).value = title;
+    r.getCell(2).value = 'Quantidade';
+    styleHeaderRow(r);
+    data.sort((a, b) => b[1] - a[1]).forEach(([k, v]) => {
+      const rr = ws.getRow(row++);
+      rr.getCell(1).value = k;
+      rr.getCell(2).value = v;
+      rr.getCell(2).alignment = { horizontal: 'right' };
+      rr.eachCell(c => {
+        c.border = {
+          top: { style: 'hair', color: { argb: 'FFE5E7EB' } },
+          bottom: { style: 'hair', color: { argb: 'FFE5E7EB' } },
+        };
+      });
+    });
+  };
+
+  addSection('Por Status', Object.entries(byStatus));
+  addSection('Por Estruturante', Object.entries(byEstr));
+  addSection('Por Produto PEN', Object.entries(byProd));
+  addSection('Por Responsável', Object.entries(byResp));
+
+  ws.views = [{ state: 'frozen', ySplit: 1 }];
 };
 
-export function exportChamadosXLSX(
+const downloadBlob = async (wb: ExcelJS.Workbook, filename: string) => {
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+export async function exportChamadosXLSX(
   chamados: Chamado[],
   filters: ExportFilters = {},
-  filename = 'chamados'
+  filename = 'chamados',
 ) {
   const filtered = applyExportFilters(chamados, filters);
   if (filtered.length === 0) {
     throw new Error('Nenhum chamado encontrado para os filtros selecionados.');
   }
 
-  const wb = XLSX.utils.book_new();
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Thoth';
+  wb.created = new Date();
 
-  // Summary
-  XLSX.utils.book_append_sheet(wb, summarySheet(filtered, filters), 'Resumo');
+  buildSummarySheet(wb.addWorksheet('Resumo', {
+    views: [{ showGridLines: false }],
+  }), filtered, filters);
 
-  // All chamados
-  const allRows = filtered.map(chamadoToRow);
-  XLSX.utils.book_append_sheet(wb, buildSheet(allRows), 'Chamados');
+  buildListSheet(wb.addWorksheet('Chamados', {
+    views: [{ state: 'frozen', ySplit: 1 }],
+  }), filtered);
 
-  // Per produto sheets (max 10 to avoid huge files)
   const produtos = Array.from(new Set(filtered.map(c => c.penProduto).filter(Boolean))) as string[];
   produtos.slice(0, 15).forEach(prod => {
-    const rows = filtered.filter(c => c.penProduto === prod).map(chamadoToRow);
-    if (rows.length > 0) {
-      const safeName = prod.replace(/[\\/?*[\]:]/g, '').slice(0, 28) || 'Produto';
-      XLSX.utils.book_append_sheet(wb, buildSheet(rows), safeName);
-    }
+    const rows = filtered.filter(c => c.penProduto === prod);
+    if (rows.length === 0) return;
+    const safe = prod.replace(/[\\/?*[\]:]/g, '').slice(0, 28) || 'Produto';
+    buildListSheet(wb.addWorksheet(safe), rows);
   });
 
   const stamp = new Date().toISOString().slice(0, 10);
-  XLSX.writeFile(wb, `${filename}_${stamp}.xlsx`);
+  await downloadBlob(wb, `${filename}_${stamp}.xlsx`);
 }
 
-// Backwards-compat CSV (kept for any callers)
-export function exportChamadosCSV(chamados: Chamado[], filename = 'chamados') {
-  exportChamadosXLSX(chamados, {}, filename);
-}
+export const exportChamadosCSV = exportChamadosXLSX;
