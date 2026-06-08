@@ -44,6 +44,11 @@ const ExportDialog: React.FC<Props> = ({ open, onClose, chamados, encerrados }) 
     [chamados]
   );
 
+  // Always reset to Chamados tab when the dialog opens
+  useEffect(() => {
+    if (open) setTab('chamados');
+  }, [open]);
+
   if (!open) return null;
 
   const handleExportChamados = async () => {
