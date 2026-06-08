@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { X, Download, FileSpreadsheet, BarChart3, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Chamado } from './ChamadoCard';
