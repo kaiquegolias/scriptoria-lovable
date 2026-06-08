@@ -54,7 +54,7 @@ const ExportDialog: React.FC<Props> = ({ open, onClose, chamados, encerrados }) 
   const handleExportChamados = async () => {
     try {
       setLoading(true);
-      exportChamadosXLSX(
+      await exportChamadosXLSX(
         chamados,
         { dateField, dateFrom, dateTo, produto, estruturante },
         encerrados ? 'chamados_encerrados' : 'chamados'
