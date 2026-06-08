@@ -6,10 +6,10 @@ import ChamadoModal from './ChamadoModal';
 import CloseTicketModal from './CloseTicketModal';
 import { toast } from 'sonner';
 import { Plus, Search, Download, Layers, Inbox, CheckCircle2, Clock, AlertTriangle, X } from 'lucide-react';
-import { exportChamadosCSV } from '@/utils/exportChamados';
 import { useAuth } from '@/context/AuthContext';
 import { useChamados } from '@/hooks/useChamados';
 import { usePdfImport } from '@/context/PdfImportContext';
+import ExportDialog from './ExportDialog';
 
 interface ChamadoListProps {
   encerrados?: boolean;
@@ -34,6 +34,7 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false }) => {
   const [filtroStatus, setFiltroStatus] = useState<string>('');
   const [selectedChamado, setSelectedChamado] = useState<Chamado | null>(null);
   const [chamadoToClose, setChamadoToClose] = useState<Chamado | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const { status: importStatus, pendingData } = usePdfImport();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -249,15 +250,13 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false }) => {
               </button>
             )}
 
-            {chamadosFiltrados.length > 0 && (
-              <button
-                onClick={() => exportChamadosCSV(chamadosFiltrados, encerrados ? 'chamados_encerrados' : 'chamados')}
-                className="px-3 py-2.5 rounded-xl border bg-background text-sm flex items-center gap-1.5 hover:bg-muted transition-colors"
-              >
-                <Download size={16} />
-                Exportar
-              </button>
-            )}
+            <button
+              onClick={() => setExportOpen(true)}
+              className="px-3 py-2.5 rounded-xl border bg-background text-sm flex items-center gap-1.5 hover:bg-muted transition-colors"
+            >
+              <Download size={16} />
+              Exportar
+            </button>
 
             {!encerrados && (
               <button
@@ -344,6 +343,13 @@ const ChamadoList: React.FC<ChamadoListProps> = ({ encerrados = false }) => {
         onOpenChange={(open) => !open && setChamadoToClose(null)}
         chamado={chamadoToClose}
         onSuccess={() => setChamadoToClose(null)}
+      />
+
+      <ExportDialog
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        chamados={chamados}
+        encerrados={encerrados}
       />
     </div>
   );
