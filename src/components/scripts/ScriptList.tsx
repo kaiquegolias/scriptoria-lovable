@@ -129,6 +129,57 @@ const ScriptList = () => {
           Novo Script
         </button>
       </div>
+
+      {/* Subpastas por produto */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <button
+          onClick={() => setProductFilter('all')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors border ${
+            productFilter === 'all'
+              ? 'bg-primary text-white border-primary'
+              : 'bg-card hover:bg-accent border-border'
+          }`}
+        >
+          <Folder size={14} />
+          Todos
+          <span className="opacity-70">({scripts.length})</span>
+        </button>
+        {SCRIPT_PRODUCTS.map((p) => {
+          const count = productCounts[p] || 0;
+          if (count === 0 && productFilter !== p) return null;
+          const active = productFilter === p;
+          return (
+            <button
+              key={p}
+              onClick={() => setProductFilter(p)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors border ${
+                active
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-card hover:bg-accent border-border'
+              }`}
+            >
+              <Folder size={14} />
+              {p}
+              <span className="opacity-70">({count})</span>
+            </button>
+          );
+        })}
+        {productCounts['__none__'] > 0 && (
+          <button
+            onClick={() => setProductFilter('__none__')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors border ${
+              productFilter === '__none__'
+                ? 'bg-primary text-white border-primary'
+                : 'bg-card hover:bg-accent border-border'
+            }`}
+          >
+            <Folder size={14} />
+            Sem produto
+            <span className="opacity-70">({productCounts['__none__']})</span>
+          </button>
+        )}
+      </div>
+      
       
       {filteredScripts.length === 0 ? (
         <div className="text-center py-12">
