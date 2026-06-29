@@ -10,6 +10,7 @@ export interface Script {
   nome: string;
   estruturante: 'PNCP' | 'PEN' | 'Outros';
   nivel: 'N1' | 'N2' | 'N3';
+  produto?: string | null;
   situacao: string;
   modelo: string;
   createdAt: string;
@@ -104,6 +105,11 @@ const ScriptCard: React.FC<ScriptCardProps> = ({ script, onEdit, onDelete, onVie
         <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${getNivelBg(script.nivel)}`}>
           {script.nivel}
         </span>
+        {script.produto && (
+          <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-primary/10 text-primary">
+            {script.produto}
+          </span>
+        )}
       </div>
       
       <div className="mb-4">
