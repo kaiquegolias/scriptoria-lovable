@@ -38,7 +38,7 @@ export function useScripts() {
         nome: item.nome,
         estruturante: item.estruturante as 'PNCP' | 'PEN' | 'Outros',
         nivel: item.nivel as 'N1' | 'N2' | 'N3',
-        situacao: item.situacao,
+        produto: item.produto ?? null, situacao: item.situacao,
         modelo: item.modelo,
         createdAt: item.created_at,
         updatedAt: item.updated_at
@@ -85,7 +85,7 @@ export function useScripts() {
           nome: data.nome,
           estruturante: data.estruturante as 'PNCP' | 'PEN' | 'Outros',
           nivel: data.nivel as 'N1' | 'N2' | 'N3',
-          situacao: data.situacao,
+          produto: data.produto ?? null, situacao: data.situacao,
           modelo: data.modelo,
           createdAt: data.created_at,
           updatedAt: data.updated_at
@@ -133,7 +133,7 @@ export function useScripts() {
           nome: data.nome,
           estruturante: data.estruturante as 'PNCP' | 'PEN' | 'Outros',
           nivel: data.nivel as 'N1' | 'N2' | 'N3',
-          situacao: data.situacao,
+          produto: data.produto ?? null, situacao: data.situacao,
           modelo: data.modelo,
           createdAt: data.created_at,
           updatedAt: data.updated_at
