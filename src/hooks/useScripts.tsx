@@ -67,7 +67,7 @@ export function useScripts() {
             user_id: user.id,
             nome: scriptData.nome,
             estruturante: scriptData.estruturante,
-            nivel: scriptData.nivel,
+            nivel: scriptData.nivel, produto: scriptData.produto ?? null,
             situacao: scriptData.situacao,
             modelo: scriptData.modelo
           }
@@ -114,7 +114,7 @@ export function useScripts() {
         .update({
           nome: scriptData.nome,
           estruturante: scriptData.estruturante,
-          nivel: scriptData.nivel,
+          nivel: scriptData.nivel, produto: scriptData.produto ?? null,
           situacao: scriptData.situacao,
           modelo: scriptData.modelo,
           updated_at: new Date().toISOString()
