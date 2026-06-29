@@ -184,6 +184,25 @@ const ScriptForm: React.FC<ScriptFormProps> = ({ onSave, onClose, script }) => {
                 </select>
               </div>
             </div>
+
+            <div>
+              <label htmlFor="produto" className="block text-sm font-medium mb-1">
+                Produto / Módulo
+              </label>
+              <select
+                id="produto"
+                name="produto"
+                value={formState.produto || ''}
+                onChange={handleChange}
+                className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">— Sem produto específico —</option>
+                {SCRIPT_PRODUCTS.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+            
             
             <div>
               <label htmlFor="situacao" className="block text-sm font-medium mb-1">
