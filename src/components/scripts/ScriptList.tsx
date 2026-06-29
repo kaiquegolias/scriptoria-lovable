@@ -4,9 +4,10 @@ import ScriptCard, { Script } from './ScriptCard';
 import ScriptForm from './ScriptForm';
 import ScriptModal from './ScriptModal';
 import { toast } from 'sonner';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Folder } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useScripts } from '@/hooks/useScripts';
+import { SCRIPT_PRODUCTS } from '@/data/scriptProducts';
 
 const ScriptList = () => {
   const { user } = useAuth();
@@ -16,6 +17,7 @@ const ScriptList = () => {
   const [scriptToEdit, setScriptToEdit] = useState<Script | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedScript, setSelectedScript] = useState<Script | null>(null);
+  const [productFilter, setProductFilter] = useState<string>('all');
   
   const filteredScripts = scripts.filter(
     (script) =>
