@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Script } from './ScriptCard';
+import { SCRIPT_PRODUCTS } from '@/data/scriptProducts';
 
 interface ScriptFormProps {
   onSave: (script: Omit<Script, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) => void;
@@ -46,12 +47,14 @@ const ScriptForm: React.FC<ScriptFormProps> = ({ onSave, onClose, script }) => {
       nome: script.nome,
       estruturante: script.estruturante,
       nivel: script.nivel,
+      produto: script.produto ?? '',
       situacao: script.situacao,
       modelo: script.modelo
     } : {
       nome: '',
       estruturante: 'PNCP',
       nivel: 'N1',
+      produto: '',
       situacao: '',
       modelo: ''
     };
