@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Script } from './ScriptCard';
+import { SCRIPT_PRODUCTS } from '@/data/scriptProducts';
 
 interface ScriptFormProps {
   onSave: (script: Omit<Script, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) => void;
@@ -46,12 +47,14 @@ const ScriptForm: React.FC<ScriptFormProps> = ({ onSave, onClose, script }) => {
       nome: script.nome,
       estruturante: script.estruturante,
       nivel: script.nivel,
+      produto: script.produto ?? '',
       situacao: script.situacao,
       modelo: script.modelo
     } : {
       nome: '',
       estruturante: 'PNCP',
       nivel: 'N1',
+      produto: '',
       situacao: '',
       modelo: ''
     };
@@ -181,6 +184,25 @@ const ScriptForm: React.FC<ScriptFormProps> = ({ onSave, onClose, script }) => {
                 </select>
               </div>
             </div>
+
+            <div>
+              <label htmlFor="produto" className="block text-sm font-medium mb-1">
+                Produto / Módulo
+              </label>
+              <select
+                id="produto"
+                name="produto"
+                value={formState.produto || ''}
+                onChange={handleChange}
+                className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">— Sem produto específico —</option>
+                {SCRIPT_PRODUCTS.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+            
             
             <div>
               <label htmlFor="situacao" className="block text-sm font-medium mb-1">

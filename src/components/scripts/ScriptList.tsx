@@ -4,9 +4,10 @@ import ScriptCard, { Script } from './ScriptCard';
 import ScriptForm from './ScriptForm';
 import ScriptModal from './ScriptModal';
 import { toast } from 'sonner';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Folder } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useScripts } from '@/hooks/useScripts';
+import { SCRIPT_PRODUCTS } from '@/data/scriptProducts';
 
 const ScriptList = () => {
   const { user } = useAuth();
@@ -16,13 +17,24 @@ const ScriptList = () => {
   const [scriptToEdit, setScriptToEdit] = useState<Script | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedScript, setSelectedScript] = useState<Script | null>(null);
+  const [productFilter, setProductFilter] = useState<string>('all');
   
-  const filteredScripts = scripts.filter(
-    (script) =>
+  const filteredScripts = scripts.filter((script) => {
+    const matchesSearch =
       script.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       script.situacao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      script.modelo.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      script.modelo.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesProduct =
+      productFilter === 'all' ||
+      (productFilter === '__none__' ? !script.produto : script.produto === productFilter);
+    return matchesSearch && matchesProduct;
+  });
+
+  const productCounts = scripts.reduce<Record<string, number>>((acc, s) => {
+    const key = s.produto || '__none__';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
   
   const handleOpenForm = () => {
     setScriptToEdit(undefined);
@@ -117,6 +129,57 @@ const ScriptList = () => {
           Novo Script
         </button>
       </div>
+
+      {/* Subpastas por produto */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <button
+          onClick={() => setProductFilter('all')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors border ${
+            productFilter === 'all'
+              ? 'bg-primary text-white border-primary'
+              : 'bg-card hover:bg-accent border-border'
+          }`}
+        >
+          <Folder size={14} />
+          Todos
+          <span className="opacity-70">({scripts.length})</span>
+        </button>
+        {SCRIPT_PRODUCTS.map((p) => {
+          const count = productCounts[p] || 0;
+          if (count === 0 && productFilter !== p) return null;
+          const active = productFilter === p;
+          return (
+            <button
+              key={p}
+              onClick={() => setProductFilter(p)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors border ${
+                active
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-card hover:bg-accent border-border'
+              }`}
+            >
+              <Folder size={14} />
+              {p}
+              <span className="opacity-70">({count})</span>
+            </button>
+          );
+        })}
+        {productCounts['__none__'] > 0 && (
+          <button
+            onClick={() => setProductFilter('__none__')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors border ${
+              productFilter === '__none__'
+                ? 'bg-primary text-white border-primary'
+                : 'bg-card hover:bg-accent border-border'
+            }`}
+          >
+            <Folder size={14} />
+            Sem produto
+            <span className="opacity-70">({productCounts['__none__']})</span>
+          </button>
+        )}
+      </div>
+      
       
       {filteredScripts.length === 0 ? (
         <div className="text-center py-12">
