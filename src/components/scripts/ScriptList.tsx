@@ -19,12 +19,22 @@ const ScriptList = () => {
   const [selectedScript, setSelectedScript] = useState<Script | null>(null);
   const [productFilter, setProductFilter] = useState<string>('all');
   
-  const filteredScripts = scripts.filter(
-    (script) =>
+  const filteredScripts = scripts.filter((script) => {
+    const matchesSearch =
       script.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       script.situacao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      script.modelo.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      script.modelo.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesProduct =
+      productFilter === 'all' ||
+      (productFilter === '__none__' ? !script.produto : script.produto === productFilter);
+    return matchesSearch && matchesProduct;
+  });
+
+  const productCounts = scripts.reduce<Record<string, number>>((acc, s) => {
+    const key = s.produto || '__none__';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
   
   const handleOpenForm = () => {
     setScriptToEdit(undefined);
