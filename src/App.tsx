@@ -23,6 +23,7 @@ import Footer from '@/components/layout/Footer';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { PdfImportProvider } from '@/context/PdfImportContext';
 import PdfImportFloating from '@/components/chamados/PdfImportFloating';
+import CortanaFloating from '@/components/cortana/CortanaFloating';
 
 function App() {
   return (
@@ -52,6 +53,7 @@ function App() {
           <Footer />
           <Toaster position="bottom-right" />
           <PdfImportFloating />
+          <CortanaFloating />
         </div>
         </PdfImportProvider>
       </ThemeProvider>

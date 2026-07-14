@@ -304,6 +304,48 @@ export type Database = {
         }
         Relationships: []
       }
+      cortana_queries: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          error_message: string | null
+          id: string
+          latency_ms: number | null
+          mode: string | null
+          pergunta: string
+          resposta_preview: string | null
+          sources: Json | null
+          success: boolean | null
+          user_id: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          latency_ms?: number | null
+          mode?: string | null
+          pergunta: string
+          resposta_preview?: string | null
+          sources?: Json | null
+          success?: boolean | null
+          user_id: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          latency_ms?: number | null
+          mode?: string | null
+          pergunta?: string
+          resposta_preview?: string | null
+          sources?: Json | null
+          success?: boolean | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       diary_entries: {
         Row: {
           chamado_ids: string[] | null
