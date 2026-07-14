@@ -9,9 +9,6 @@ export interface CortanaMessage {
   content: string;
   timestamp: Date;
 }
-  content: string;
-  timestamp: Date;
-}
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cortana-chat`;
 
