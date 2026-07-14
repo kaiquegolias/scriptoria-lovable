@@ -53,6 +53,7 @@ function App() {
           <Footer />
           <Toaster position="bottom-right" />
           <PdfImportFloating />
+          <CortanaFloating />
         </div>
         </PdfImportProvider>
       </ThemeProvider>
