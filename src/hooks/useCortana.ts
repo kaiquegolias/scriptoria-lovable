@@ -30,6 +30,9 @@ export function useCortana() {
 
     setMessages(prev => [...prev, userMsg]);
     setIsLoading(true);
+    const startedAt = Date.now();
+    let logSuccess = true;
+    let logError: string | null = null;
 
     // Build message history for context
     const chatHistory = [...messages, userMsg].map(m => ({
