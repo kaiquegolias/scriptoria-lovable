@@ -147,10 +147,27 @@ export function useCortana() {
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return;
       console.error('Cortana chat error:', err);
+      logSuccess = false;
+      logError = err instanceof Error ? err.message : 'Erro desconhecido';
       toast.error('Erro ao comunicar com a Cortana.');
     } finally {
       setIsLoading(false);
       abortRef.current = null;
+
+      // Log query for training/metrics dashboard (fire-and-forget)
+      try {
+        await supabase.from('cortana_queries').insert({
+          user_id: user.id,
+          pergunta: userMsg.content.slice(0, 2000),
+          resposta_preview: assistantContent.slice(0, 500) || null,
+          mode: 'online',
+          latency_ms: Date.now() - startedAt,
+          success: logSuccess,
+          error_message: logError,
+        });
+      } catch (logErr) {
+        console.warn('Failed to log cortana query:', logErr);
+      }
     }
   }, [user, messages]);
 
