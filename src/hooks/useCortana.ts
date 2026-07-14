@@ -1,10 +1,14 @@
 import { useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export interface CortanaMessage {
   id: string;
   role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+}
   content: string;
   timestamp: Date;
 }
