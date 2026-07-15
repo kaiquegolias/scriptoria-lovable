@@ -423,6 +423,10 @@ export function useChamados(encerrados = false) {
       return false;
     }
 
+    // Optimistic UI: remove imediatamente da tela
+    const snapshot = chamados;
+    setChamados(prev => prev.filter(chamado => chamado.id !== id));
+
     try {
       // Get chamado data before soft-delete for logging
       const { data: chamadoData } = await supabase
@@ -446,17 +450,10 @@ export function useChamados(encerrados = false) {
         throw error;
       }
 
-      // Remove from kb_vectors (biblioteca)
-      await supabase
-        .from('kb_vectors')
-        .delete()
-        .eq('source_id', id)
-        .eq('source_type', 'ticket');
-
-      // Log deletion in system_logs for supervisor
-      await supabase
-        .from('system_logs')
-        .insert({
+      // Trabalhos secundários em paralelo, sem bloquear a UI
+      Promise.allSettled([
+        supabase.from('kb_vectors').delete().eq('source_id', id).eq('source_type', 'ticket'),
+        supabase.from('system_logs').insert({
           user_id: user.id,
           user_email: user.email,
           event_type: 'chamado_deleted',
@@ -470,12 +467,8 @@ export function useChamados(encerrados = false) {
             justification: justification || 'Não informada',
             deleted_at: new Date().toISOString()
           }
-        });
-
-      // Log in audit_log for detailed audit trail
-      await supabase
-        .from('audit_log')
-        .insert({
+        }),
+        supabase.from('audit_log').insert({
           user_id: user.id,
           user_email: user.email,
           action: 'chamado_deleted',
@@ -487,16 +480,19 @@ export function useChamados(encerrados = false) {
             justification: justification || 'Não informada',
             deleted_at: new Date().toISOString()
           }
-        });
+        }),
+      ]).catch(err => console.error('Erro em logs secundários:', err));
 
-      setChamados(chamados.filter(chamado => chamado.id !== id));
       return true;
     } catch (error) {
       console.error('Error deleting chamado:', error);
       toast.error('Erro ao excluir chamado.');
+      // Rollback em caso de falha
+      setChamados(snapshot);
       return false;
     }
   };
+
 
   // Load initial data
   useEffect(() => {
