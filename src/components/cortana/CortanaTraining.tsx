@@ -29,6 +29,7 @@ interface KBStats {
   totalModelos: number;
   indexedScripts: number;
   indexedTickets: number;
+  indexedModelos: number;
   lastIndexed: string | null;
 }
 
