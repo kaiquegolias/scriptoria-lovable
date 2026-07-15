@@ -197,12 +197,88 @@ export function useKBIndexer() {
     }
   }, [indexTicket]);
 
+  const indexModelo = useCallback(async (modelo: {
+    id: string;
+    nome: string;
+    situacao: string | null;
+    modelo: string | null;
+    estruturante?: string | null;
+    nivel?: string | null;
+    produto?: string | null;
+  }) => {
+    const fullText = `${modelo.nome} ${modelo.situacao || ''} ${modelo.modelo || ''} ${modelo.estruturante || ''} ${modelo.nivel || ''} ${modelo.produto || ''}`;
+    const tokens = generateTokens(fullText);
+    const keywords = extractKeywords(fullText);
+    if (modelo.estruturante) keywords.push(modelo.estruturante.toLowerCase());
+    if (modelo.produto) keywords.push(modelo.produto.toLowerCase());
+
+    const contentParts: string[] = [];
+    if (modelo.estruturante || modelo.nivel || modelo.produto) {
+      contentParts.push(`🏷️ ${[modelo.estruturante, modelo.produto, modelo.nivel].filter(Boolean).join(' · ')}`);
+    }
+    if (modelo.situacao) contentParts.push(`📋 Situação: ${modelo.situacao.substring(0, 300)}`);
+    if (modelo.modelo) contentParts.push(`💬 Modelo:\n${modelo.modelo.substring(0, 400)}`);
+    const contentPreview = contentParts.join('\n').substring(0, 800);
+
+    await supabase
+      .from('kb_vectors')
+      .delete()
+      .eq('source_id', modelo.id)
+      .eq('source_type', 'modelo');
+
+    const { error } = await supabase
+      .from('kb_vectors')
+      .insert({
+        source_id: modelo.id,
+        source_type: 'modelo',
+        title: modelo.nome,
+        content_preview: contentPreview,
+        tokens,
+        keywords: [...new Set(keywords)],
+        updated_at: new Date().toISOString(),
+      });
+
+    if (error) {
+      console.error('Error indexing modelo:', error);
+      throw error;
+    }
+  }, []);
+
+  const indexAllModelos = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { data: modelos, error } = await supabase
+        .from('scripts')
+        .select('id, nome, situacao, modelo, estruturante, nivel, produto');
+
+      if (error) throw error;
+
+      const total = modelos?.length || 0;
+      setProgress({ current: 0, total });
+
+      for (let i = 0; i < (modelos?.length || 0); i++) {
+        await indexModelo(modelos![i]);
+        setProgress({ current: i + 1, total });
+      }
+
+      toast.success(`${total} modelos de resposta indexados com sucesso!`);
+    } catch (error) {
+      console.error('Error indexing modelos:', error);
+      toast.error('Erro ao indexar modelos de resposta.');
+    } finally {
+      setLoading(false);
+      setProgress({ current: 0, total: 0 });
+    }
+  }, [indexModelo]);
+
   return {
     loading,
     progress,
     indexScript,
     indexTicket,
+    indexModelo,
     indexAllScripts,
     indexAllTickets,
+    indexAllModelos,
   };
 }
