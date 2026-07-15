@@ -87,6 +87,7 @@ const CortanaTraining: React.FC = () => {
         { count: totalModelos },
         { count: indexedScripts },
         { count: indexedTickets },
+        { count: indexedModelos },
         { data: lastEntry },
       ] = await Promise.all([
         supabase.from('scripts_library').select('*', { count: 'exact', head: true }),
@@ -95,12 +96,14 @@ const CortanaTraining: React.FC = () => {
         supabase.from('scripts').select('*', { count: 'exact', head: true }),
         supabase.from('kb_vectors').select('*', { count: 'exact', head: true }).eq('source_type', 'script'),
         supabase.from('kb_vectors').select('*', { count: 'exact', head: true }).eq('source_type', 'ticket'),
+        supabase.from('kb_vectors').select('*', { count: 'exact', head: true }).eq('source_type', 'modelo'),
         supabase.from('kb_vectors').select('updated_at').order('updated_at', { ascending: false }).limit(1),
       ]);
       setStats({
         totalScripts: totalScripts || 0, totalTickets: totalTickets || 0,
         totalKBDocs: totalKBDocs || 0, totalModelos: totalModelos || 0,
         indexedScripts: indexedScripts || 0, indexedTickets: indexedTickets || 0,
+        indexedModelos: indexedModelos || 0,
         lastIndexed: lastEntry?.[0]?.updated_at || null,
       });
     } catch (err) { console.error('Error fetching KB stats:', err); }
