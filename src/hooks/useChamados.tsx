@@ -5,7 +5,7 @@ import { Chamado } from '@/components/chamados/ChamadoCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { format } from 'date-fns';
-import { addBusinessHours } from '@/utils/businessHours';
+import { addBusinessHours, addBusinessDays } from '@/utils/businessHours';
 import { ptBR } from 'date-fns/locale';
 
 const mapRowToChamado = (item: any): Chamado => ({
