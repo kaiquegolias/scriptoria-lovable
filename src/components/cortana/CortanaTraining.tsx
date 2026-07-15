@@ -394,11 +394,16 @@ const CortanaTraining: React.FC = () => {
                   <Progress value={progressPercent} className="h-2" />
                 </div>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <Button onClick={handleTrainAll} disabled={loading} className="h-auto py-4 flex flex-col items-center gap-2 rounded-xl">
                   {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Brain className="h-5 w-5" />}
                   <span className="font-medium">Treinamento Completo</span>
-                  <span className="text-xs opacity-80">Scripts + Chamados</span>
+                  <span className="text-xs opacity-80">Modelos + Scripts + Chamados</span>
+                </Button>
+                <Button variant="outline" onClick={async () => { await indexAllModelos(); await fetchStats(); }} disabled={loading} className="h-auto py-4 flex flex-col items-center gap-2 rounded-xl">
+                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <BookOpen className="h-5 w-5" />}
+                  <span className="font-medium">Treinar Modelos</span>
+                  <span className="text-xs opacity-80">{stats.totalModelos} modelos</span>
                 </Button>
                 <Button variant="outline" onClick={async () => { await indexAllScripts(); await fetchStats(); }} disabled={loading} className="h-auto py-4 flex flex-col items-center gap-2 rounded-xl">
                   {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileText className="h-5 w-5" />}
