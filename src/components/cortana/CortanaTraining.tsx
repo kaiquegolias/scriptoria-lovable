@@ -246,7 +246,7 @@ const CortanaTraining: React.FC = () => {
         <StatCard icon={<FileText className="h-4 w-4" />} label="Scripts Biblioteca" value={stats.totalScripts} indexed={stats.indexedScripts} loading={statsLoading} />
         <StatCard icon={<Database className="h-4 w-4" />} label="Chamados Resolvidos" value={stats.totalTickets} indexed={stats.indexedTickets} loading={statsLoading} />
         <StatCard icon={<BarChart3 className="h-4 w-4" />} label="Documentos KB" value={stats.totalKBDocs} loading={statsLoading} auto />
-        <StatCard icon={<BookOpen className="h-4 w-4" />} label="Modelos de Resposta" value={stats.totalModelos} loading={statsLoading} auto />
+        <StatCard icon={<BookOpen className="h-4 w-4" />} label="Modelos de Resposta" value={stats.totalModelos} indexed={stats.indexedModelos} loading={statsLoading} />
       </div>
 
       <Tabs defaultValue="fontes" className="space-y-4">
