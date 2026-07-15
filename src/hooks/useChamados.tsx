@@ -5,7 +5,7 @@ import { Chamado } from '@/components/chamados/ChamadoCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { format } from 'date-fns';
-import { addBusinessHours } from '@/utils/businessHours';
+import { addBusinessHours, addBusinessDays } from '@/utils/businessHours';
 import { ptBR } from 'date-fns/locale';
 
 const mapRowToChamado = (item: any): Chamado => ({
@@ -95,9 +95,10 @@ export function useChamados(encerrados = false) {
     try {
       let dataLimite = undefined;
       if (chamadoData.status === 'agendados_aguardando') {
-        // 72 horas úteis (Seg-Sex 09:00-18:00)
-        dataLimite = addBusinessHours(new Date(), 72).toISOString();
+        // 3 dias úteis (Seg-Sex)
+        dataLimite = addBusinessDays(new Date(), 3).toISOString();
       }
+
       
       const { data, error } = await supabase
         .from('chamados')
@@ -179,9 +180,10 @@ export function useChamados(encerrados = false) {
       // If status is changing to 'agendados_aguardando' and wasn't before, or if it was but didn't have a data_limite
       if (chamadoData.status === 'agendados_aguardando' && 
          (existingChamado?.status !== 'agendados_aguardando' || !existingChamado?.data_limite)) {
-        // 72 horas úteis (Seg-Sex 09:00-18:00)
-        dataLimite = addBusinessHours(new Date(), 72).toISOString();
+        // 3 dias úteis (Seg-Sex)
+        dataLimite = addBusinessDays(new Date(), 3).toISOString();
       } else if (chamadoData.status !== 'agendados_aguardando') {
+
         // If status is not 'agendados_aguardando' anymore, remove the deadline
         dataLimite = null;
       }

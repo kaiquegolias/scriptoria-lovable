@@ -1,5 +1,18 @@
 // Add business hours to a date.
 // Business day: Mon-Fri, 09:00 - 18:00 (9h/day, skipping weekends).
+
+// Add N business days (Mon-Fri), preserving the current time of day.
+export function addBusinessDays(start: Date, days: number): Date {
+  const date = new Date(start.getTime());
+  let added = 0;
+  while (added < days) {
+    date.setDate(date.getDate() + 1);
+    const day = date.getDay();
+    if (day !== 0 && day !== 6) added++;
+  }
+  return date;
+}
+
 export function addBusinessHours(start: Date, hours: number): Date {
   const WORK_START = 9; // 09:00
   const WORK_END = 18; // 18:00
