@@ -66,10 +66,10 @@ interface UsageMetrics {
 }
 
 const CortanaTraining: React.FC = () => {
-  const { loading, progress, indexAllScripts, indexAllTickets } = useKBIndexer();
+  const { loading, progress, indexAllScripts, indexAllTickets, indexAllModelos } = useKBIndexer();
   const [stats, setStats] = useState<KBStats>({
     totalScripts: 0, totalTickets: 0, totalKBDocs: 0, totalModelos: 0,
-    indexedScripts: 0, indexedTickets: 0, lastIndexed: null,
+    indexedScripts: 0, indexedTickets: 0, indexedModelos: 0, lastIndexed: null,
   });
   const [statsLoading, setStatsLoading] = useState(true);
   const [documents, setDocuments] = useState<KBDocument[]>([]);
