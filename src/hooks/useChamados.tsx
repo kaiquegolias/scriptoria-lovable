@@ -95,9 +95,10 @@ export function useChamados(encerrados = false) {
     try {
       let dataLimite = undefined;
       if (chamadoData.status === 'agendados_aguardando') {
-        // 72 horas úteis (Seg-Sex 09:00-18:00)
-        dataLimite = addBusinessHours(new Date(), 72).toISOString();
+        // 3 dias úteis (Seg-Sex)
+        dataLimite = addBusinessDays(new Date(), 3).toISOString();
       }
+
       
       const { data, error } = await supabase
         .from('chamados')
