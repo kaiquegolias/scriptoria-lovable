@@ -498,9 +498,10 @@ const CortanaTraining: React.FC = () => {
             <Card>
               <CardHeader><CardTitle className="text-base">Cobertura de indexação</CardTitle></CardHeader>
               <CardContent className="space-y-4">
+                <HealthRow label="Modelos de resposta" value={stats.indexedModelos} total={stats.totalModelos} />
                 <HealthRow label="Scripts biblioteca" value={stats.indexedScripts} total={stats.totalScripts} />
                 <HealthRow label="Chamados resolvidos" value={stats.indexedTickets} total={stats.totalTickets} />
-                <HealthRow label="Cobertura total" value={stats.indexedScripts + stats.indexedTickets} total={stats.totalScripts + stats.totalTickets} highlight />
+                <HealthRow label="Cobertura total" value={stats.indexedModelos + stats.indexedScripts + stats.indexedTickets} total={stats.totalModelos + stats.totalScripts + stats.totalTickets} highlight />
               </CardContent>
             </Card>
 
