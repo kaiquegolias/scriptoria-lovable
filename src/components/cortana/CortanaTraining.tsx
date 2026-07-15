@@ -190,6 +190,7 @@ const CortanaTraining: React.FC = () => {
 
   const handleTrainAll = async () => {
     toast.info('Iniciando treinamento completo da Cortana...');
+    await indexAllModelos();
     await indexAllScripts();
     await indexAllTickets();
     await fetchStats();
