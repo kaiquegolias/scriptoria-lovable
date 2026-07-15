@@ -29,6 +29,7 @@ interface KBStats {
   totalModelos: number;
   indexedScripts: number;
   indexedTickets: number;
+  indexedModelos: number;
   lastIndexed: string | null;
 }
 
@@ -65,10 +66,10 @@ interface UsageMetrics {
 }
 
 const CortanaTraining: React.FC = () => {
-  const { loading, progress, indexAllScripts, indexAllTickets } = useKBIndexer();
+  const { loading, progress, indexAllScripts, indexAllTickets, indexAllModelos } = useKBIndexer();
   const [stats, setStats] = useState<KBStats>({
     totalScripts: 0, totalTickets: 0, totalKBDocs: 0, totalModelos: 0,
-    indexedScripts: 0, indexedTickets: 0, lastIndexed: null,
+    indexedScripts: 0, indexedTickets: 0, indexedModelos: 0, lastIndexed: null,
   });
   const [statsLoading, setStatsLoading] = useState(true);
   const [documents, setDocuments] = useState<KBDocument[]>([]);
@@ -86,6 +87,7 @@ const CortanaTraining: React.FC = () => {
         { count: totalModelos },
         { count: indexedScripts },
         { count: indexedTickets },
+        { count: indexedModelos },
         { data: lastEntry },
       ] = await Promise.all([
         supabase.from('scripts_library').select('*', { count: 'exact', head: true }),
@@ -94,12 +96,14 @@ const CortanaTraining: React.FC = () => {
         supabase.from('scripts').select('*', { count: 'exact', head: true }),
         supabase.from('kb_vectors').select('*', { count: 'exact', head: true }).eq('source_type', 'script'),
         supabase.from('kb_vectors').select('*', { count: 'exact', head: true }).eq('source_type', 'ticket'),
+        supabase.from('kb_vectors').select('*', { count: 'exact', head: true }).eq('source_type', 'modelo'),
         supabase.from('kb_vectors').select('updated_at').order('updated_at', { ascending: false }).limit(1),
       ]);
       setStats({
         totalScripts: totalScripts || 0, totalTickets: totalTickets || 0,
         totalKBDocs: totalKBDocs || 0, totalModelos: totalModelos || 0,
         indexedScripts: indexedScripts || 0, indexedTickets: indexedTickets || 0,
+        indexedModelos: indexedModelos || 0,
         lastIndexed: lastEntry?.[0]?.updated_at || null,
       });
     } catch (err) { console.error('Error fetching KB stats:', err); }
@@ -186,6 +190,7 @@ const CortanaTraining: React.FC = () => {
 
   const handleTrainAll = async () => {
     toast.info('Iniciando treinamento completo da Cortana...');
+    await indexAllModelos();
     await indexAllScripts();
     await indexAllTickets();
     await fetchStats();
@@ -206,8 +211,8 @@ const CortanaTraining: React.FC = () => {
   };
 
   const progressPercent = progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
-  const totalCoverage = stats.totalScripts + stats.totalTickets > 0
-    ? Math.round(((stats.indexedScripts + stats.indexedTickets) / (stats.totalScripts + stats.totalTickets)) * 100)
+  const totalCoverage = stats.totalScripts + stats.totalTickets + stats.totalModelos > 0
+    ? Math.round(((stats.indexedScripts + stats.indexedTickets + stats.indexedModelos) / (stats.totalScripts + stats.totalTickets + stats.totalModelos)) * 100)
     : 0;
 
   const isHealthy = totalCoverage >= 80 && (metrics?.successRate ?? 100) >= 90;
@@ -241,7 +246,7 @@ const CortanaTraining: React.FC = () => {
         <StatCard icon={<FileText className="h-4 w-4" />} label="Scripts Biblioteca" value={stats.totalScripts} indexed={stats.indexedScripts} loading={statsLoading} />
         <StatCard icon={<Database className="h-4 w-4" />} label="Chamados Resolvidos" value={stats.totalTickets} indexed={stats.indexedTickets} loading={statsLoading} />
         <StatCard icon={<BarChart3 className="h-4 w-4" />} label="Documentos KB" value={stats.totalKBDocs} loading={statsLoading} auto />
-        <StatCard icon={<BookOpen className="h-4 w-4" />} label="Modelos de Resposta" value={stats.totalModelos} loading={statsLoading} auto />
+        <StatCard icon={<BookOpen className="h-4 w-4" />} label="Modelos de Resposta" value={stats.totalModelos} indexed={stats.indexedModelos} loading={statsLoading} />
       </div>
 
       <Tabs defaultValue="fontes" className="space-y-4">
@@ -375,10 +380,10 @@ const CortanaTraining: React.FC = () => {
                 <Brain className="h-5 w-5 text-primary" />
                 Reindexar Dados Existentes
               </CardTitle>
-              <CardDescription>
-                A indexação processa scripts e chamados resolvidos para busca otimizada.
-              </CardDescription>
-            </CardHeader>
+            <CardDescription>
+              A indexação processa modelos de resposta, scripts e chamados resolvidos para busca otimizada.
+            </CardDescription>
+          </CardHeader>
             <CardContent className="space-y-4">
               {loading && (
                 <div className="space-y-2">
@@ -389,11 +394,16 @@ const CortanaTraining: React.FC = () => {
                   <Progress value={progressPercent} className="h-2" />
                 </div>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <Button onClick={handleTrainAll} disabled={loading} className="h-auto py-4 flex flex-col items-center gap-2 rounded-xl">
                   {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Brain className="h-5 w-5" />}
                   <span className="font-medium">Treinamento Completo</span>
-                  <span className="text-xs opacity-80">Scripts + Chamados</span>
+                  <span className="text-xs opacity-80">Modelos + Scripts + Chamados</span>
+                </Button>
+                <Button variant="outline" onClick={async () => { await indexAllModelos(); await fetchStats(); }} disabled={loading} className="h-auto py-4 flex flex-col items-center gap-2 rounded-xl">
+                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <BookOpen className="h-5 w-5" />}
+                  <span className="font-medium">Treinar Modelos</span>
+                  <span className="text-xs opacity-80">{stats.totalModelos} modelos</span>
                 </Button>
                 <Button variant="outline" onClick={async () => { await indexAllScripts(); await fetchStats(); }} disabled={loading} className="h-auto py-4 flex flex-col items-center gap-2 rounded-xl">
                   {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileText className="h-5 w-5" />}
@@ -488,9 +498,10 @@ const CortanaTraining: React.FC = () => {
             <Card>
               <CardHeader><CardTitle className="text-base">Cobertura de indexação</CardTitle></CardHeader>
               <CardContent className="space-y-4">
+                <HealthRow label="Modelos de resposta" value={stats.indexedModelos} total={stats.totalModelos} />
                 <HealthRow label="Scripts biblioteca" value={stats.indexedScripts} total={stats.totalScripts} />
                 <HealthRow label="Chamados resolvidos" value={stats.indexedTickets} total={stats.totalTickets} />
-                <HealthRow label="Cobertura total" value={stats.indexedScripts + stats.indexedTickets} total={stats.totalScripts + stats.totalTickets} highlight />
+                <HealthRow label="Cobertura total" value={stats.indexedModelos + stats.indexedScripts + stats.indexedTickets} total={stats.totalModelos + stats.totalScripts + stats.totalTickets} highlight />
               </CardContent>
             </Card>
 
