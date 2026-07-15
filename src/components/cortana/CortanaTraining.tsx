@@ -380,10 +380,10 @@ const CortanaTraining: React.FC = () => {
                 <Brain className="h-5 w-5 text-primary" />
                 Reindexar Dados Existentes
               </CardTitle>
-              <CardDescription>
-                A indexação processa scripts e chamados resolvidos para busca otimizada.
-              </CardDescription>
-            </CardHeader>
+            <CardDescription>
+              A indexação processa modelos de resposta, scripts e chamados resolvidos para busca otimizada.
+            </CardDescription>
+          </CardHeader>
             <CardContent className="space-y-4">
               {loading && (
                 <div className="space-y-2">
