@@ -211,8 +211,8 @@ const CortanaTraining: React.FC = () => {
   };
 
   const progressPercent = progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
-  const totalCoverage = stats.totalScripts + stats.totalTickets > 0
-    ? Math.round(((stats.indexedScripts + stats.indexedTickets) / (stats.totalScripts + stats.totalTickets)) * 100)
+  const totalCoverage = stats.totalScripts + stats.totalTickets + stats.totalModelos > 0
+    ? Math.round(((stats.indexedScripts + stats.indexedTickets + stats.indexedModelos) / (stats.totalScripts + stats.totalTickets + stats.totalModelos)) * 100)
     : 0;
 
   const isHealthy = totalCoverage >= 80 && (metrics?.successRate ?? 100) >= 90;
