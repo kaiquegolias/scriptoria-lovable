@@ -1,4 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
+import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { FileUp, FileText, X, Loader2, Globe, Plus, Check, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +10,24 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+
+const extractPdfText = async (file: File): Promise<string> => {
+  const buffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+  const pages: string[] = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const text = content.items
+      .filter((item: any) => 'str' in item && item.str.trim())
+      .map((item: any) => item.str)
+      .join(' ');
+    pages.push(text);
+  }
+  return pages.join('\n\n').replace(/\s+/g, ' ').trim();
+};
 
 interface UploadedDoc {
   name: string;
@@ -28,41 +48,23 @@ const ACCEPTED_TYPES = [
 const ACCEPTED_EXTENSIONS = ['.pdf', '.epub', '.xls', '.xlsx', '.txt', '.csv'];
 
 const extractTextFromFile = async (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const content = e.target?.result;
-        if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-          if (content instanceof ArrayBuffer) {
-            const decoder = new TextDecoder('utf-8');
-            const text = decoder.decode(content);
-            const extracted = text
-              .replace(/[^\x20-\x7E\xA0-\xFF\u0100-\u017F\u0180-\u024F\u00C0-\u00FF]/g, ' ')
-              .replace(/\s+/g, ' ').trim();
-            resolve(extracted || 'Não foi possível extrair texto do PDF.');
-          }
-        } else if (file.name.endsWith('.epub')) {
-          if (content instanceof ArrayBuffer) {
-            const decoder = new TextDecoder('utf-8');
-            const text = decoder.decode(content);
-            const extracted = text.replace(/<[^>]+>/g, ' ')
-              .replace(/[^\x20-\x7E\xA0-\xFF\u0100-\u017F\u0180-\u024F\u00C0-\u00FF]/g, ' ')
-              .replace(/\s+/g, ' ').trim();
-            resolve(extracted || 'Não foi possível extrair texto do EPUB.');
-          }
-        } else {
-          resolve(typeof content === 'string' ? content : '');
-        }
-      } catch (err) { reject(err); }
-    };
-    reader.onerror = () => reject(new Error('Erro ao ler arquivo'));
-    if (file.name.endsWith('.pdf') || file.name.endsWith('.epub')) {
-      reader.readAsArrayBuffer(file);
-    } else {
-      reader.readAsText(file);
+  const nameLower = file.name.toLowerCase();
+  if (file.type === 'application/pdf' || nameLower.endsWith('.pdf')) {
+    const text = await extractPdfText(file);
+    if (!text || text.length < 20) {
+      throw new Error('PDF sem texto extraível (possivelmente escaneado). Use OCR antes de subir.');
     }
-  });
+    return text;
+  }
+  if (nameLower.endsWith('.epub')) {
+    const buffer = await file.arrayBuffer();
+    const decoder = new TextDecoder('utf-8');
+    return decoder.decode(buffer)
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/[^\x20-\x7E\xA0-\xFF\u0100-\u017F\u0180-\u024F\u00C0-\u00FF]/g, ' ')
+      .replace(/\s+/g, ' ').trim();
+  }
+  return await file.text();
 };
 
 const CortanaDocumentUpload: React.FC<{ onDocumentAdded?: () => void }> = ({ onDocumentAdded }) => {
