@@ -1,4 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
+import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { FileUp, FileText, X, Loader2, Globe, Plus, Check, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +10,24 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+
+const extractPdfText = async (file: File): Promise<string> => {
+  const buffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+  const pages: string[] = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const text = content.items
+      .filter((item: any) => 'str' in item && item.str.trim())
+      .map((item: any) => item.str)
+      .join(' ');
+    pages.push(text);
+  }
+  return pages.join('\n\n').replace(/\s+/g, ' ').trim();
+};
 
 interface UploadedDoc {
   name: string;
