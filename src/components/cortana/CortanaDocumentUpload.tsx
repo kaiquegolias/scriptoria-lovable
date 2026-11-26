@@ -1,3 +1,4 @@
+import { useCortanaDomain } from '@/context/CortanaDomainContext';
 import React, { useState, useRef, useCallback } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
@@ -73,6 +74,7 @@ const CortanaDocumentUpload: React.FC<{ onDocumentAdded?: () => void }> = ({ onD
   const [urlLoading, setUrlLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const domain = useCortanaDomain();
 
   const isAccepted = (file: File) => {
     if (ACCEPTED_TYPES.includes(file.type)) return true;
@@ -87,7 +89,7 @@ const CortanaDocumentUpload: React.FC<{ onDocumentAdded?: () => void }> = ({ onD
       .sort((a, b) => b[1] - a[1]).slice(0, 15).map(([w]) => w);
 
     const { error } = await supabase.from('kb_documents').insert({
-      title, content: content.substring(0, 50000), source, category,
+      title, content: content.substring(0, 50000), source, category, dominio: domain,
       keywords: topKeywords,
     });
     if (error) throw error;

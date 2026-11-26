@@ -9,7 +9,7 @@ const Footer = () => {
       <div className="container mx-auto px-4">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
           <p className="text-xs text-muted-foreground">
-            &copy; {currentYear} Thoth v2.0 — Todos os direitos reservados.
+            &copy; {currentYear} Thoth v3.0 — Todos os direitos reservados.
           </p>
           <div className="flex space-x-4">
             <a href="#" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Suporte</a>

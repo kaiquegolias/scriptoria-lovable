@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import CortanaChat from './CortanaChat';
+import { CortanaDomain, CortanaDomainProvider } from '@/context/CortanaDomainContext';
 
 const HIDE_ON_ROUTES = ['/cortana', '/'];
 
@@ -14,6 +15,8 @@ const CortanaFloating: React.FC = () => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [domain, setDomain] = useState<CortanaDomain>(() => (localStorage.getItem('thoth:agent') as CortanaDomain) || 'PEN');
+  const pick = (d: CortanaDomain) => { setDomain(d); localStorage.setItem('thoth:agent', d); };
 
   // Close popup on route change
   useEffect(() => {
@@ -64,10 +67,18 @@ const CortanaFloating: React.FC = () => {
               </div>
               <div>
                 <div className="text-sm font-semibold leading-tight flex items-center gap-1.5">
-                  Cortana
+                  {domain === 'PEN' ? 'Cortana' : 'adaPNCP'}
                   <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                 </div>
-                <div className="text-[10px] text-muted-foreground">Assistente PEN · Online</div>
+                <div className="mt-0.5 flex gap-1">
+                  {(['PEN', 'PNCP'] as const).map(d => (
+                    <button key={d} onClick={() => pick(d)}
+                      className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-semibold transition-colors',
+                        domain === d ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground')}>
+                      {d}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -107,7 +118,7 @@ const CortanaFloating: React.FC = () => {
           {/* Chat body */}
           <div className="flex-1 overflow-hidden p-3">
             <div className="h-full [&>div]:!h-full [&>div]:!max-h-full">
-              <CortanaChat />
+              <CortanaDomainProvider domain={domain} key={domain}><CortanaChat /></CortanaDomainProvider>
             </div>
           </div>
         </div>

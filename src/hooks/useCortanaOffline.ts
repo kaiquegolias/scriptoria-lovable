@@ -1,3 +1,4 @@
+import { useCortanaDomain } from '@/context/CortanaDomainContext';
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -67,6 +68,7 @@ export function useCortanaOffline() {
   const [messages, setMessages] = useState<CortanaMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
+  const domain = useCortanaDomain();
 
   const search = useCallback(async (input: string) => {
     if (!user || !input.trim()) return;
@@ -89,9 +91,9 @@ export function useCortanaOffline() {
         { data: tickets },
         { data: kbDocs },
       ] = await Promise.all([
-        supabase.from('scripts').select('nome, situacao, modelo, estruturante, nivel').eq('user_id', user.id),
-        supabase.from('chamados').select('titulo, acompanhamento, classificacao, pen_produto, pen_modulo, status').eq('user_id', user.id).order('data_atualizacao', { ascending: false }).limit(100),
-        supabase.from('kb_documents').select('title, content, category'),
+        supabase.from('scripts').select('nome, situacao, modelo, estruturante, nivel').eq('user_id', user.id).eq('estruturante', domain),
+        supabase.from('chamados').select('titulo, acompanhamento, classificacao, pen_produto, pen_modulo, status').eq('user_id', user.id).eq('estruturante', domain).order('data_atualizacao', { ascending: false }).limit(100),
+        supabase.from('kb_documents').select('title, content, category').eq('dominio', domain),
       ]);
 
       const results: SearchResult[] = [];
@@ -186,7 +188,7 @@ export function useCortanaOffline() {
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, domain]);
 
   const clearChat = useCallback(() => setMessages([]), []);
 

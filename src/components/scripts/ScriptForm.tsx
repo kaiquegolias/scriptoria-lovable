@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Script } from './ScriptCard';
-import { SCRIPT_PRODUCTS } from '@/data/scriptProducts';
+import { productsForDomain } from '@/data/scriptProducts';
 
 interface ScriptFormProps {
   onSave: (script: Omit<Script, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) => void;
@@ -197,7 +197,7 @@ const ScriptForm: React.FC<ScriptFormProps> = ({ onSave, onClose, script }) => {
                 className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="">— Sem produto específico —</option>
-                {SCRIPT_PRODUCTS.map(p => (
+                {productsForDomain(formState.estruturante).map(p => (
                   <option key={p} value={p}>{p}</option>
                 ))}
               </select>

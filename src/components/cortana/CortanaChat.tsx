@@ -8,7 +8,15 @@ import { useCortanaOffline } from '@/hooks/useCortanaOffline';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useCortanaDomain, DOMAIN_META } from '@/context/CortanaDomainContext';
 import { runMexxExtraction, ExtractedMexxData } from '@/utils/mexxPdfExtractor';
+
+const PNCP_PROMPTS = [
+  { emoji: '🔍', text: 'Quais erros mais comuns de publicação no PNCP existem na base?' },
+  { emoji: '📝', text: 'Me ajude a responder um chamado sobre ata de registro de preço no PNCP' },
+  { emoji: '🔌', text: 'Existe script sobre falha de integração via API do PNCP?' },
+  { emoji: '✅', text: 'Quais chamados do PNCP já foram resolvidos sobre contratos?' },
+];
 
 const QUICK_PROMPTS = [
   { emoji: '🔍', text: 'Quais erros mais comuns existem na minha base?' },
@@ -18,6 +26,8 @@ const QUICK_PROMPTS = [
 ];
 
 const CortanaChat: React.FC = () => {
+  const domain = useCortanaDomain();
+  const meta = DOMAIN_META[domain];
   const online = useCortana();
   const offline = useCortanaOffline();
   const [mode, setMode] = useState<'online' | 'offline'>('online');
@@ -94,7 +104,7 @@ const CortanaChat: React.FC = () => {
     const t = toast.loading('Analisando PDF do MEXX...');
     try {
       const { data } = await runMexxExtraction(file, (p) => setPdfProgress(p));
-      toast.success('PDF analisado. Cortana está respondendo...', { id: t });
+      toast.success(`PDF analisado. ${meta.short} está respondendo...`, { id: t });
       if (mode !== 'online') setMode('online');
       const prompt = buildMexxPrompt(data);
       setTimeout(() => online.sendMessage(prompt), 50);
@@ -159,7 +169,7 @@ const CortanaChat: React.FC = () => {
                     <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0.3s' }} />
                   </div>
                   <span className="text-sm text-muted-foreground">
-                    {mode === 'online' ? 'Cortana está pensando...' : 'Buscando na base local...'}
+                    {mode === 'online' ? `${meta.short} está pensando...` : 'Buscando na base local...'}
                   </span>
                 </div>
               )}
@@ -176,7 +186,7 @@ const CortanaChat: React.FC = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={mode === 'online' ? 'Pergunte à Cortana...' : 'Buscar na base de conhecimento...'}
+            placeholder={mode === 'online' ? `Pergunte ao ${meta.short}...`.replace('ao Cortana','à Cortana') : 'Buscar na base de conhecimento...'}
             className="min-h-[52px] max-h-[140px] resize-none rounded-xl bg-card border-border/50 pr-12 text-sm shadow-sm focus-visible:ring-primary/30"
             rows={1}
           />
@@ -226,7 +236,10 @@ const CortanaChat: React.FC = () => {
   );
 };
 
-const WelcomeScreen: React.FC<{ mode: string; onQuickPrompt: (p: string) => void }> = ({ mode, onQuickPrompt }) => (
+const WelcomeScreen: React.FC<{ mode: string; onQuickPrompt: (p: string) => void }> = ({ mode, onQuickPrompt }) => {
+  const domain = useCortanaDomain();
+  const meta = DOMAIN_META[domain];
+  return (
   <div className="flex flex-col items-center justify-center h-full text-center py-16 px-6">
     <div className="relative mb-6">
       <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-lg shadow-primary/10">
@@ -240,15 +253,15 @@ const WelcomeScreen: React.FC<{ mode: string; onQuickPrompt: (p: string) => void
       </div>
     </div>
     <h3 className="text-2xl font-bold mb-2">
-      {mode === 'online' ? 'Olá! Eu sou a Cortana 👋' : 'Busca Local 🔍'}
+      {mode === 'online' ? `Olá! Eu sou ${domain === 'PNCP' ? 'o adaPNCP' : 'a Cortana'} 👋` : 'Busca Local 🔍'}
     </h3>
     <p className="text-muted-foreground text-sm max-w-md mb-8 leading-relaxed">
       {mode === 'online'
-        ? 'Sua assistente de IA especialista no PEN. Pergunte sobre erros, soluções, scripts e chamados.'
+        ? `${meta.tagline}. Respondo apenas com base em scripts, chamados e documentos de ${domain}.`
         : 'Pesquise diretamente na base de conhecimento sem consumir tokens. Ideal para buscas rápidas por palavras-chave.'}
     </p>
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
-      {QUICK_PROMPTS.map((prompt, i) => (
+      {(domain === 'PNCP' ? PNCP_PROMPTS : QUICK_PROMPTS).map((prompt, i) => (
         <button
           key={i}
           onClick={() => onQuickPrompt(prompt.text)}
@@ -261,9 +274,11 @@ const WelcomeScreen: React.FC<{ mode: string; onQuickPrompt: (p: string) => void
     </div>
   </div>
 );
+};
 
 const MessageBubble: React.FC<{ message: CortanaMessage }> = ({ message }) => {
   const isUser = message.role === 'user';
+  const domain = useCortanaDomain();
 
   return (
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
@@ -277,7 +292,7 @@ const MessageBubble: React.FC<{ message: CortanaMessage }> = ({ message }) => {
       </div>
       <div className={`flex-1 max-w-[85%] ${isUser ? 'text-right' : ''}`}>
         <div className={`flex items-center gap-2 mb-1.5 ${isUser ? 'justify-end' : ''}`}>
-          <span className="text-xs font-semibold">{isUser ? 'Você' : 'Cortana'}</span>
+          <span className="text-xs font-semibold">{isUser ? 'Você' : DOMAIN_META[domain].short}</span>
           <span className="text-[11px] text-muted-foreground/50">
             {message.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
           </span>

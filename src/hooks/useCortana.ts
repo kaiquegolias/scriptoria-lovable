@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useCortanaDomain } from '@/context/CortanaDomainContext';
 
 export interface CortanaMessage {
   id: string;
@@ -16,6 +17,7 @@ export function useCortana() {
   const [messages, setMessages] = useState<CortanaMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
+  const domain = useCortanaDomain();
   const abortRef = useRef<AbortController | null>(null);
 
   const sendMessage = useCallback(async (input: string) => {
@@ -70,7 +72,7 @@ export function useCortana() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ messages: chatHistory, userId: user.id }),
+        body: JSON.stringify({ messages: chatHistory, userId: user.id, domain }),
         signal: abortRef.current.signal,
       });
 
@@ -157,6 +159,7 @@ export function useCortana() {
       // Log query for training/metrics dashboard (fire-and-forget)
       try {
         await supabase.from('cortana_queries').insert({
+          dominio: domain,
           user_id: user.id,
           pergunta: userMsg.content.slice(0, 2000),
           resposta_preview: assistantContent.slice(0, 500) || null,
@@ -169,7 +172,7 @@ export function useCortana() {
         console.warn('Failed to log cortana query:', logErr);
       }
     }
-  }, [user, messages]);
+  }, [user, messages, domain]);
 
   const clearChat = useCallback(() => {
     setMessages([]);

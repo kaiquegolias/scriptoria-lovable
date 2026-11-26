@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { Plus, Search, Folder } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useScripts } from '@/hooks/useScripts';
-import { SCRIPT_PRODUCTS } from '@/data/scriptProducts';
+import { productsForDomain } from '@/data/scriptProducts';
 
 const ScriptList = () => {
   const { user } = useAuth();
@@ -18,8 +18,14 @@ const ScriptList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedScript, setSelectedScript] = useState<Script | null>(null);
   const [productFilter, setProductFilter] = useState<string>('all');
-  
-  const filteredScripts = scripts.filter((script) => {
+  const [domainFilter, setDomainFilter] = useState<'PEN' | 'PNCP' | 'Outros'>('PEN');
+
+  const domainScripts = scripts.filter(s => s.estruturante === domainFilter);
+  const domainCounts = scripts.reduce<Record<string, number>>((acc, s) => {
+    acc[s.estruturante] = (acc[s.estruturante] || 0) + 1; return acc;
+  }, {});
+
+  const filteredScripts = domainScripts.filter((script) => {
     const matchesSearch =
       script.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       script.situacao.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -30,7 +36,7 @@ const ScriptList = () => {
     return matchesSearch && matchesProduct;
   });
 
-  const productCounts = scripts.reduce<Record<string, number>>((acc, s) => {
+  const productCounts = domainScripts.reduce<Record<string, number>>((acc, s) => {
     const key = s.produto || '__none__';
     acc[key] = (acc[key] || 0) + 1;
     return acc;
@@ -130,6 +136,22 @@ const ScriptList = () => {
         </button>
       </div>
 
+      {/* Áreas separadas por domínio — PEN e PNCP nunca se misturam */}
+      <div className="grid grid-cols-3 gap-2 mb-4 rounded-2xl border border-border/60 bg-card/70 p-1.5 backdrop-blur max-w-xl">
+        {(['PEN', 'PNCP', 'Outros'] as const).map(d => (
+          <button
+            key={d}
+            onClick={() => { setDomainFilter(d); setProductFilter('all'); }}
+            className={`rounded-xl px-3 py-2 text-sm font-semibold transition-all ${
+              domainFilter === d ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+            }`}
+          >
+            {d === 'PEN' ? 'Scripts PEN' : d === 'PNCP' ? 'Área PNCP' : 'Outros'}
+            <span className="ml-1.5 opacity-70">({domainCounts[d] || 0})</span>
+          </button>
+        ))}
+      </div>
+
       {/* Subpastas por produto */}
       <div className="flex flex-wrap gap-2 mb-6">
         <button
@@ -142,9 +164,9 @@ const ScriptList = () => {
         >
           <Folder size={14} />
           Todos
-          <span className="opacity-70">({scripts.length})</span>
+          <span className="opacity-70">({domainScripts.length})</span>
         </button>
-        {SCRIPT_PRODUCTS.map((p) => {
+        {productsForDomain(domainFilter).map((p) => {
           const count = productCounts[p] || 0;
           if (count === 0 && productFilter !== p) return null;
           const active = productFilter === p;

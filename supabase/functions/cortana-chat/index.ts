@@ -115,7 +115,8 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, userId }: { messages: ChatMessage[]; userId: string } = await req.json();
+    const { messages, userId, domain: rawDomain }: { messages: ChatMessage[]; userId: string; domain?: string } = await req.json();
+    const domain: "PEN" | "PNCP" = rawDomain === "PNCP" ? "PNCP" : "PEN";
 
     if (!messages || !userId) {
       return new Response(
@@ -149,14 +150,16 @@ serve(async (req) => {
     ] = await Promise.all([
       supabase.from("scripts")
         .select("nome, situacao, modelo, estruturante, nivel, produto")
-        .eq("user_id", userId),
+        .eq("user_id", userId)
+        .eq("estruturante", domain),
       supabase.from("chamados")
         .select("id, titulo, acompanhamento, classificacao, pen_produto, pen_modulo, status, data_atualizacao")
         .eq("user_id", userId)
+        .eq("estruturante", domain)
         .in("status", ["resolvido", "aguardando devolutiva", "em andamento"])
         .order("data_atualizacao", { ascending: false })
         .limit(80),
-      supabase.from("kb_documents").select("title, content, category, source"),
+      supabase.from("kb_documents").select("title, content, category, source").eq("dominio", domain),
       supabase.from("scripts_library")
         .select("title, description, content, sistema, tags")
         .limit(200),
@@ -200,6 +203,10 @@ Acompanhamento: ${truncate(t.acompanhamento, 400)}`)
 
     // ─── Scripts library (procedimentos técnicos) ───
     const rankedLib = (scriptsLib || [])
+      .filter(s => {
+        const isPncp = /pncp|contrata/i.test(`${s.sistema || ""} ${(s.tags || []).join(" ")} ${s.title}`);
+        return domain === "PNCP" ? isPncp : !isPncp;
+      })
       .map(s => ({
         ...s,
         score: relevanceScore(
@@ -269,7 +276,9 @@ ${truncate(s.content || "", 500)}`)
         : "FONTES_SUFICIENTES";
 
     // ─── System prompt: structured reasoning + strict citation ───
-    const systemPrompt = `Você é a CORTANA, analista sênior especialista no PEN (Processo Eletrônico Nacional), PNCP, SEI, Tramita GOV.BR, NUP, Protocolo Integrado, Protocolo.GOV, Barramento PEN, Assinatura Eletrônica gov.br, Módulo de Estatística e Gestão Documental. Trabalha lado a lado com o Kaique (analista N2) na resolução de chamados.
+    const systemPrompt = `${domain === "PNCP"
+      ? "Você é o adaPNCP (Agente de apoio ao PNCP), analista sênior especialista EXCLUSIVAMENTE no PNCP — Portal Nacional de Contratações Públicas (Lei 14.133/2021): publicação de contratações, atas de registro de preço, contratos, PCA, integração via API, cadastro de órgãos/usuários. Trabalha com o Kaique (analista N2) na resolução de chamados do PNCP. Você NÃO responde sobre PEN, SEI, Tramita, NUP ou Protocolo: se a pergunta for desses sistemas, diga que ela deve ser feita à Cortana PEN. Meta de precisão: erro máximo de 1% — na dúvida, declare que não há fonte."
+      : "Você é a CORTANA, analista sênior especialista no PEN (Processo Eletrônico Nacional), SEI, Tramita GOV.BR, NUP, Protocolo Integrado, Protocolo.GOV, Barramento PEN, Assinatura Eletrônica gov.br, Módulo de Estatística e Gestão Documental. Trabalha lado a lado com o Kaique (analista N2) na resolução de chamados. Você NÃO responde sobre PNCP: se a pergunta for do PNCP, oriente usar o adaPNCP."}
 
 ## PERSONA
 - Precisa, direta, cordial. Português-BR. Emojis raros (apenas quando agregam clareza).

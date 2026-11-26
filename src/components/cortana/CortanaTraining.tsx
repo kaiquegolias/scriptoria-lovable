@@ -1,3 +1,4 @@
+import { useCortanaDomain, DOMAIN_META } from '@/context/CortanaDomainContext';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   Brain, Database, FileText, CheckCircle2, Loader2, BarChart3, BookOpen,
@@ -66,6 +67,7 @@ interface UsageMetrics {
 }
 
 const CortanaTraining: React.FC = () => {
+  const domain = useCortanaDomain();
   const { loading, progress, indexAllScripts, indexAllTickets, indexAllModelos } = useKBIndexer();
   const [stats, setStats] = useState<KBStats>({
     totalScripts: 0, totalTickets: 0, totalKBDocs: 0, totalModelos: 0,
@@ -91,9 +93,9 @@ const CortanaTraining: React.FC = () => {
         { data: lastEntry },
       ] = await Promise.all([
         supabase.from('scripts_library').select('*', { count: 'exact', head: true }),
-        supabase.from('chamados').select('*', { count: 'exact', head: true }).eq('status', 'resolvido'),
-        supabase.from('kb_documents').select('*', { count: 'exact', head: true }),
-        supabase.from('scripts').select('*', { count: 'exact', head: true }),
+        supabase.from('chamados').select('*', { count: 'exact', head: true }).eq('status', 'resolvido').eq('estruturante', domain),
+        supabase.from('kb_documents').select('*', { count: 'exact', head: true }).eq('dominio', domain),
+        supabase.from('scripts').select('*', { count: 'exact', head: true }).eq('estruturante', domain),
         supabase.from('kb_vectors').select('*', { count: 'exact', head: true }).eq('source_type', 'script'),
         supabase.from('kb_vectors').select('*', { count: 'exact', head: true }).eq('source_type', 'ticket'),
         supabase.from('kb_vectors').select('*', { count: 'exact', head: true }).eq('source_type', 'modelo'),
@@ -108,7 +110,7 @@ const CortanaTraining: React.FC = () => {
       });
     } catch (err) { console.error('Error fetching KB stats:', err); }
     finally { setStatsLoading(false); }
-  }, []);
+  }, [domain]);
 
   const fetchDocuments = useCallback(async () => {
     setDocsLoading(true);
@@ -116,6 +118,7 @@ const CortanaTraining: React.FC = () => {
       const { data, error } = await supabase
         .from('kb_documents')
         .select('id, title, source, category, content, created_at, updated_at')
+        .eq('dominio', domain)
         .order('created_at', { ascending: false });
       if (error) throw error;
       setDocuments(data || []);
@@ -125,7 +128,7 @@ const CortanaTraining: React.FC = () => {
     } finally {
       setDocsLoading(false);
     }
-  }, []);
+  }, [domain]);
 
   const fetchMetrics = useCallback(async () => {
     setMetricsLoading(true);
@@ -133,6 +136,7 @@ const CortanaTraining: React.FC = () => {
       const { data, error } = await supabase
         .from('cortana_queries')
         .select('id, pergunta, resposta_preview, mode, latency_ms, success, error_message, created_at')
+        .eq('dominio', domain)
         .order('created_at', { ascending: false })
         .limit(500);
       if (error) throw error;
@@ -180,7 +184,7 @@ const CortanaTraining: React.FC = () => {
     } finally {
       setMetricsLoading(false);
     }
-  }, []);
+  }, [domain]);
 
   useEffect(() => {
     fetchStats();

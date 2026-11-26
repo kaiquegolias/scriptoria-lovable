@@ -308,6 +308,7 @@ export type Database = {
         Row: {
           confidence: number | null
           created_at: string
+          dominio: string
           error_message: string | null
           id: string
           latency_ms: number | null
@@ -321,6 +322,7 @@ export type Database = {
         Insert: {
           confidence?: number | null
           created_at?: string
+          dominio?: string
           error_message?: string | null
           id?: string
           latency_ms?: number | null
@@ -334,6 +336,7 @@ export type Database = {
         Update: {
           confidence?: number | null
           created_at?: string
+          dominio?: string
           error_message?: string | null
           id?: string
           latency_ms?: number | null
@@ -440,6 +443,7 @@ export type Database = {
           category: string | null
           content: string
           created_at: string
+          dominio: string
           id: string
           keywords: string[] | null
           source: string
@@ -450,6 +454,7 @@ export type Database = {
           category?: string | null
           content: string
           created_at?: string
+          dominio?: string
           id?: string
           keywords?: string[] | null
           source?: string
@@ -460,6 +465,7 @@ export type Database = {
           category?: string | null
           content?: string
           created_at?: string
+          dominio?: string
           id?: string
           keywords?: string[] | null
           source?: string

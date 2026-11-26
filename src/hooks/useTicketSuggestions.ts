@@ -41,17 +41,35 @@ export function useTicketSuggestions() {
       const ticketTokens = generateTokens(ticketText);
 
       // Get all vectors from kb_vectors
-      const { data: vectors, error: vectorsError } = await supabase
+      const { data: allVectors, error: vectorsError } = await supabase
         .from('kb_vectors')
         .select('*');
 
       if (vectorsError) throw vectorsError;
 
+      // Separação estrita por domínio (PEN x PNCP): nunca misturar assuntos
+      const domain = ticket.estruturante;
+      const [{ data: sameTickets }, { data: sameModelos }, { data: libs }] = await Promise.all([
+        supabase.from('chamados').select('id').eq('estruturante', domain).limit(5000),
+        supabase.from('scripts').select('id').eq('estruturante', domain),
+        supabase.from('scripts_library').select('id, sistema, tags, title'),
+      ]);
+      const allowed = new Set<string>([
+        ...(sameTickets || []).map(t => t.id),
+        ...(sameModelos || []).map(s => s.id),
+        ...(libs || []).filter(l => {
+          const isPncp = /pncp|contrata/i.test(`${l.sistema || ''} ${(l.tags || []).join(' ')} ${l.title}`);
+          return domain === 'PNCP' ? isPncp : !isPncp;
+        }).map(l => l.id),
+      ]);
+      const vectors = (allVectors || []).filter(v => allowed.has(v.source_id) && v.source_id !== ticketId);
+
       // Also get scripts directly from scripts table for more complete suggestions
       const { data: scripts, error: scriptsError } = await supabase
         .from('scripts')
         .select('id, nome, situacao, modelo, estruturante, nivel')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .eq('estruturante', ticket.estruturante);
 
       if (scriptsError) throw scriptsError;
 
@@ -87,7 +105,7 @@ export function useTicketSuggestions() {
 
         // Boost score if estruturante/nivel match
         let boostedScore = score;
-        if (script.estruturante === ticket.estruturante) boostedScore += 0.15;
+        
         if (script.nivel === ticket.nivel) boostedScore += 0.1;
 
         if (boostedScore > 0.1) {
