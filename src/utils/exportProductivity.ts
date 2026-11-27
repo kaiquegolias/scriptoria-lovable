@@ -1,3 +1,4 @@
+import { fetchAllRows } from '@/lib/fetchAll';
 import ExcelJS from 'exceljs';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -115,11 +116,11 @@ export async function exportProductivityXLSX(range: ProductivityRange) {
   const fromIso = new Date(range.from + 'T00:00:00').toISOString();
   const toIso = new Date(range.to + 'T23:59:59').toISOString();
 
-  let q = supabase.from('chamados').select('*');
-  if (range.userId) q = q.eq('user_id', range.userId);
-  const { data: chamados, error } = await q;
-  if (error) throw error;
-  const all = chamados || [];
+  const all = await fetchAllRows<any>(() => {
+    let q = supabase.from('chamados').select('*').order('id');
+    if (range.userId) q = q.eq('user_id', range.userId);
+    return q;
+  });
 
   const novos = all.filter(c => c.data_criacao >= fromIso && c.data_criacao <= toIso);
   const encerrados = all.filter(c => c.status === 'resolvido' && c.data_atualizacao >= fromIso && c.data_atualizacao <= toIso);
@@ -127,10 +128,11 @@ export async function exportProductivityXLSX(range: ProductivityRange) {
   const atualizados = all.filter(c => c.data_atualizacao >= fromIso && c.data_atualizacao <= toIso && c.data_criacao < fromIso);
   const fila = all.filter(c => c.status !== 'resolvido' && c.status !== 'excluido');
 
-  let aq = supabase.from('audit_log').select('*').gte('created_at', fromIso).lte('created_at', toIso).order('created_at', { ascending: false });
-  if (range.userId) aq = aq.eq('user_id', range.userId);
-  const { data: audit } = await aq;
-  const auditRows = audit || [];
+  const auditRows = await fetchAllRows<any>(() => {
+    let q = supabase.from('audit_log').select('*').gte('created_at', fromIso).lte('created_at', toIso).order('created_at', { ascending: false });
+    if (range.userId) q = q.eq('user_id', range.userId);
+    return q;
+  }).catch(() => [] as any[]);
 
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Thoth';

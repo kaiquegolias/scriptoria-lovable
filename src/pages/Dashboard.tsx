@@ -1,257 +1,192 @@
 import React, { useEffect, useState } from 'react';
-import { FileText, PhoneCall, CheckCircle, Clock, Calendar, BarChart3, Sparkles, BookOpen, Trash2, ArrowRight } from 'lucide-react';
+import { FileText, PhoneCall, CheckCircle, Clock, Calendar, Sparkles, BookOpen, ArrowRight, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { fetchAllRows } from '@/lib/fetchAll';
+import { Button } from '@/components/ui/button';
+
+type Row = { status: string; estruturante: string; data_criacao: string; data_atualizacao: string; data_limite: string | null };
+
+const STATUS_ITEMS = [
+  { label: 'Agendados', key: 'agendados', color: 'bg-primary' },
+  { label: 'Agendados PLANNER', key: 'agendados_planner', color: 'bg-accent-foreground' },
+  { label: 'Aguardando devolutiva', key: 'agendados_aguardando', color: 'bg-warning' },
+  { label: 'Em andamento', key: 'em_andamento', color: 'bg-success' },
+];
+
+const sameDay = (iso: string | null | undefined, ref: Date) => {
+  if (!iso) return false;
+  const d = new Date(iso);
+  return d.getFullYear() === ref.getFullYear() && d.getMonth() === ref.getMonth() && d.getDate() === ref.getDate();
+};
 
 const Dashboard = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    scriptsCount: 0,
-    chamadosOpenCount: 0,
-    chamadosClosedCount: 0,
-    chamadosToday: 0,
-    resolvedToday: 0,
-    chamadosByEstruturante: {} as Record<string, number>,
-    chamadosByStatus: {} as Record<string, number>,
-    diaryPendingCount: 0,
-  });
+  const [error, setError] = useState<string | null>(null);
+  const [rows, setRows] = useState<Row[]>([]);
+  const [scriptsCount, setScriptsCount] = useState(0);
+  const [diaryPending, setDiaryPending] = useState(0);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      if (!user) return;
+  const load = async () => {
+    if (!user) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const [chamados, scripts, diary] = await Promise.all([
+        fetchAllRows<Row>(() => supabase.from('chamados').select('status, estruturante, data_criacao, data_atualizacao, data_limite').order('id')),
+        supabase.from('scripts').select('id', { count: 'exact', head: true }),
+        supabase.from('diary_entries').select('id', { count: 'exact', head: true }).eq('completed', false),
+      ]);
+      setRows(chamados);
+      setScriptsCount(scripts.count || 0);
+      setDiaryPending(diary.count || 0);
+    } catch (e) {
+      console.error('Erro ao carregar dashboard:', e);
+      setError('Não foi possível carregar os dados do painel.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      setLoading(true);
-      try {
-        const { data: scripts } = await supabase
-          .from('scripts')
-          .select('id', { count: 'exact' });
-        
-        const { data: chamados } = await supabase
-          .from('chamados')
-          .select('*');
-        
-        const { data: diary } = await supabase
-          .from('diary_entries')
-          .select('id')
-          .eq('completed', false);
-        
-        if (chamados) {
-          const activeChamados = chamados.filter(c => c.status !== 'excluido');
-          const chamadosOpen = activeChamados.filter(c => c.status !== 'resolvido');
-          const chamadosClosed = activeChamados.filter(c => c.status === 'resolvido');
-          
-          const today = new Date().toISOString().split('T')[0];
-          const chamadosToday = activeChamados.filter(c => 
-            new Date(c.data_criacao).toISOString().split('T')[0] === today
-          ).length;
-          
-          const resolvedToday = activeChamados.filter(c => 
-            c.status === 'resolvido' && 
-            new Date(c.data_atualizacao).toISOString().split('T')[0] === today
-          ).length;
-          
-          const chamadosByEstruturante = chamadosOpen.reduce((acc, chamado) => {
-            acc[chamado.estruturante] = (acc[chamado.estruturante] || 0) + 1;
-            return acc;
-          }, {} as Record<string, number>);
-          
-          const chamadosByStatus = activeChamados.reduce((acc, chamado) => {
-            acc[chamado.status] = (acc[chamado.status] || 0) + 1;
-            return acc;
-          }, {} as Record<string, number>);
-          
-          setStats({
-            scriptsCount: scripts?.length || 0,
-            chamadosOpenCount: chamadosOpen.length,
-            chamadosClosedCount: chamadosClosed.length,
-            chamadosToday,
-            resolvedToday,
-            chamadosByEstruturante,
-            chamadosByStatus,
-            diaryPendingCount: diary?.length || 0,
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching dashboard stats:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStats();
-  }, [user]);
-
-  const userDisplayName = user?.email?.split('@')[0] || 'usuário';
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [user]);
 
   if (!user) {
     return (
-      <div className="container mx-auto px-4 py-8 animate-fade-in text-center">
-        <h1 className="text-2xl font-bold mb-4">Bem-vindo ao Thoth</h1>
-        <p className="mb-8">Por favor, faça login para acessar seu dashboard.</p>
+      <div className="container mx-auto px-4 py-16 text-center">
+        <h1 className="text-2xl font-bold mb-2">Bem-vindo ao Thoth</h1>
+        <p className="text-muted-foreground">Faça login para acessar seu painel.</p>
       </div>
     );
   }
 
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-16 animate-fade-in text-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-primary mx-auto"></div>
-        <p className="mt-4 text-sm text-muted-foreground">Carregando dashboard...</p>
-      </div>
-    );
-  }
+  const now = new Date();
+  const active = rows.filter(c => c.status !== 'excluido');
+  const deleted = rows.length - active.length;
+  const open = active.filter(c => c.status !== 'resolvido');
+  const closed = active.filter(c => c.status === 'resolvido');
+  const overdue = open.filter(c => c.data_limite && new Date(c.data_limite) < now).length;
+  const newToday = active.filter(c => sameDay(c.data_criacao, now)).length;
+  const resolvedToday = closed.filter(c => sameDay(c.data_atualizacao, now)).length;
+  const byStatus = open.reduce<Record<string, number>>((a, c) => { a[c.status] = (a[c.status] || 0) + 1; return a; }, {});
+  const estr = ['PEN', 'PNCP', 'Outros'].map(name => ({
+    name,
+    open: open.filter(c => c.estruturante === name).length,
+    closed: closed.filter(c => c.estruturante === name).length,
+  }));
+  const userDisplayName = user.email?.split('@')[0] || 'usuário';
 
   const statCards = [
-    { title: 'Chamados Abertos', value: stats.chamadosOpenCount, icon: PhoneCall, color: 'text-warning', bg: 'bg-warning/10' },
-    { title: 'Encerrados', value: stats.chamadosClosedCount, icon: CheckCircle, color: 'text-success', bg: 'bg-success/10' },
-    { title: 'Resolvidos Hoje', value: stats.resolvedToday, icon: Clock, color: 'text-primary', bg: 'bg-primary/10', sub: `${stats.chamadosToday} novos hoje` },
-    { title: 'Scripts', value: stats.scriptsCount, icon: FileText, color: 'text-accent-foreground', bg: 'bg-accent' },
+    { title: 'Na fila', value: open.length, icon: PhoneCall, tone: 'text-primary bg-primary/10', sub: `${overdue} vencido(s)` },
+    { title: 'Encerrados', value: closed.length, icon: CheckCircle, tone: 'text-success bg-success/10', sub: `${resolvedToday} hoje` },
+    { title: 'Novos hoje', value: newToday, icon: Clock, tone: 'text-warning bg-warning/10', sub: now.toLocaleDateString('pt-BR') },
+    { title: 'Excluídos', value: deleted, icon: Trash2, tone: 'text-destructive bg-destructive/10', sub: 'fora da contagem' },
   ];
 
   const quickLinks = [
-    { to: '/chamados', title: 'Chamados', desc: 'Gerenciar chamados ativos', icon: PhoneCall, color: 'text-primary', bg: 'bg-primary/10' },
-    { to: '/scripts', title: 'Scripts', desc: 'Seus scripts e respostas', icon: FileText, color: 'text-accent-foreground', bg: 'bg-accent' },
-    { to: '/diario', title: 'Diário', desc: `${stats.diaryPendingCount} tarefas pendentes`, icon: Calendar, color: 'text-warning', bg: 'bg-warning/10' },
-    { to: '/chamados-encerrados', title: 'Encerrados', desc: 'Histórico de finalizados', icon: CheckCircle, color: 'text-success', bg: 'bg-success/10' },
-    { to: '/cortana', title: 'Cortana', desc: 'Assistente inteligente', icon: Sparkles, color: 'text-primary', bg: 'bg-primary/10' },
-    { to: '/biblioteca', title: 'Biblioteca', desc: 'Base de conhecimento', icon: BookOpen, color: 'text-accent-foreground', bg: 'bg-accent' },
+    { to: '/chamados', title: 'Chamados', desc: 'Fila ativa', icon: PhoneCall },
+    { to: '/scripts', title: 'Scripts', desc: `${scriptsCount} cadastrados`, icon: FileText },
+    { to: '/diario', title: 'Diário', desc: `${diaryPending} pendente(s)`, icon: Calendar },
+    { to: '/chamados-encerrados', title: 'Encerrados', desc: 'Histórico', icon: CheckCircle },
+    { to: '/cortana', title: 'Assistentes IA', desc: 'Cortana e adaPNCP', icon: Sparkles },
+    { to: '/biblioteca', title: 'Biblioteca', desc: 'Base de conhecimento', icon: BookOpen },
   ];
 
   return (
-    <div className="container mx-auto px-4 py-8 animate-fade-in">
-      {/* Header */}
-      <div className="mb-8">
-        <motion.h1
-          className="text-3xl font-bold tracking-tight"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          Olá, {userDisplayName} 👋
-        </motion.h1>
-        <p className="text-muted-foreground mt-1">Veja um resumo das suas atividades.</p>
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-primary">Painel</p>
+          <h1 className="text-3xl font-bold tracking-tight mt-1">Olá, {userDisplayName}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">Resumo da sua operação em tempo real.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={load} disabled={loading} className="rounded-xl">
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} /> Atualizar
+        </Button>
       </div>
-      
-      {/* Stat Cards */}
+
+      {error && (
+        <div className="mb-6 flex items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
+          <AlertTriangle className="h-4 w-4 text-destructive" /> {error}
+          <Button size="sm" variant="ghost" onClick={load} className="ml-auto">Tentar novamente</Button>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {statCards.map((card, i) => (
-          <motion.div
-            key={card.title}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.06 }}
-            className="bg-card border border-border/60 rounded-2xl p-5 hover:shadow-lg transition-all duration-300"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className={`p-2.5 rounded-xl ${card.bg}`}>
-                <card.icon size={20} className={card.color} />
-              </div>
-            </div>
-            <p className="text-3xl font-bold">{card.value}</p>
-            <p className="text-sm text-muted-foreground mt-1">{card.title}</p>
-            {card.sub && <p className="text-xs text-muted-foreground/70 mt-0.5">{card.sub}</p>}
+          <motion.div key={card.title} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+            className="bg-card border border-border/60 rounded-2xl p-5">
+            <div className={`inline-flex p-2.5 rounded-xl ${card.tone}`}><card.icon size={18} /></div>
+            <p className="text-3xl font-bold mt-3 tabular-nums">{loading ? '—' : card.value}</p>
+            <p className="text-sm font-medium mt-1">{card.title}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{loading ? '' : card.sub}</p>
           </motion.div>
         ))}
       </div>
-      
-      {/* Charts Section */}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="bg-card border border-border/60 rounded-2xl p-6"
-        >
+        <div className="bg-card border border-border/60 rounded-2xl p-6">
           <div className="flex justify-between items-center mb-5">
-            <h2 className="text-base font-semibold">Por Estruturante</h2>
-            <Link to="/chamados" className="text-xs text-primary hover:underline flex items-center gap-1">
-              Ver todos <ArrowRight size={12} />
-            </Link>
+            <h2 className="text-base font-semibold">Fila por estruturante</h2>
+            <Link to="/chamados" className="text-xs text-primary hover:underline flex items-center gap-1">Ver fila <ArrowRight size={12} /></Link>
           </div>
-          
-          <div className="space-y-4">
-            {[
-              { name: 'PNCP', color: 'bg-estruturante-pncp', count: stats.chamadosByEstruturante['PNCP'] || 0 },
-              { name: 'PEN', color: 'bg-estruturante-pen', count: stats.chamadosByEstruturante['PEN'] || 0 },
-              { name: 'Outros', color: 'bg-estruturante-other', count: stats.chamadosByEstruturante['Outros'] || 0 },
-            ].map(item => {
-              const total = stats.chamadosOpenCount || 1;
-              const pct = Math.round((item.count / total) * 100);
+          <div className="space-y-5">
+            {estr.map(item => {
+              const pct = open.length ? Math.round((item.open / open.length) * 100) : 0;
               return (
                 <div key={item.name}>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <span className="text-sm font-medium">{item.name}</span>
-                    <span className="text-sm text-muted-foreground">{item.count}</span>
+                  <div className="flex justify-between items-baseline mb-1.5 text-sm">
+                    <span className="font-medium">{item.name}</span>
+                    <span className="text-muted-foreground tabular-nums">{item.open} na fila · {item.closed} encerrados</span>
                   </div>
-                  <div className="h-2 bg-accent rounded-full overflow-hidden">
-                    <div className={`h-full ${item.color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               );
             })}
           </div>
-        </motion.div>
-        
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-card border border-border/60 rounded-2xl p-6"
-        >
+        </div>
+
+        <div className="bg-card border border-border/60 rounded-2xl p-6">
           <div className="flex justify-between items-center mb-5">
-            <h2 className="text-base font-semibold">Status dos Chamados</h2>
-            <Link to="/chamados" className="text-xs text-primary hover:underline flex items-center gap-1">
-              Detalhes <ArrowRight size={12} />
-            </Link>
+            <h2 className="text-base font-semibold">Status da fila</h2>
+            <span className="text-xs text-muted-foreground">{open.length} ativo(s)</span>
           </div>
-          
-          <div className="space-y-3">
-            {[
-              { label: 'Agendados', key: 'agendados', color: 'bg-status-info' },
-              { label: 'Agendados PLANNER', key: 'agendados_planner', color: 'bg-purple-500' },
-              { label: 'Aguardando devolutiva', key: 'agendados_aguardando', color: 'bg-yellow-500' },
-              { label: 'Em Andamento', key: 'em_andamento', color: 'bg-status-warning' },
-              { label: 'Resolvidos', key: 'resolvido', color: 'bg-status-success' },
-            ].map(item => (
-              <div key={item.key} className="flex items-center justify-between py-1">
+          <div className="space-y-2">
+            {STATUS_ITEMS.map(item => (
+              <div key={item.key} className="flex items-center justify-between rounded-xl px-3 py-2.5 bg-muted/40">
                 <div className="flex items-center gap-2.5">
-                  <div className={`w-2.5 h-2.5 rounded-full ${item.color}`}></div>
+                  <span className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
                   <span className="text-sm">{item.label}</span>
                 </div>
-                <span className="font-semibold text-sm tabular-nums">
-                  {stats.chamadosByStatus[item.key] || 0}
-                </span>
+                <span className="font-semibold text-sm tabular-nums">{loading ? '—' : byStatus[item.key] || 0}</span>
               </div>
             ))}
+            <div className="flex items-center justify-between rounded-xl px-3 py-2.5 bg-destructive/5">
+              <div className="flex items-center gap-2.5">
+                <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                <span className="text-sm">Vencidos</span>
+              </div>
+              <span className="font-semibold text-sm tabular-nums text-destructive">{loading ? '—' : overdue}</span>
+            </div>
           </div>
-        </motion.div>
+        </div>
       </div>
-      
-      {/* Quick Links */}
-      <h2 className="text-base font-semibold mb-4">Acesso Rápido</h2>
+
+      <h2 className="text-base font-semibold mb-4">Acesso rápido</h2>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {quickLinks.map((link, i) => (
-          <motion.div
-            key={link.to}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 + i * 0.04 }}
-          >
-            <Link
-              to={link.to}
-              className="bg-card border border-border/60 rounded-2xl p-4 text-center hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 flex flex-col items-center gap-2.5 h-full"
-            >
-              <div className={`p-2.5 rounded-xl ${link.bg}`}>
-                <link.icon size={20} className={link.color} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">{link.title}</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">{link.desc}</p>
-              </div>
-            </Link>
-          </motion.div>
+        {quickLinks.map(link => (
+          <Link key={link.to} to={link.to}
+            className="group bg-card border border-border/60 rounded-2xl p-4 hover:border-primary/40 hover:shadow-md transition-all flex flex-col gap-3">
+            <div className="p-2 rounded-xl bg-primary/10 text-primary w-fit"><link.icon size={18} /></div>
+            <div>
+              <h3 className="text-sm font-semibold group-hover:text-primary transition-colors">{link.title}</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">{link.desc}</p>
+            </div>
+          </Link>
         ))}
       </div>
     </div>

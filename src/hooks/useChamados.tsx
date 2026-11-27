@@ -1,3 +1,4 @@
+import { fetchAllRows } from '@/lib/fetchAll';
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
@@ -60,14 +61,13 @@ export function useChamados(encerrados = false) {
 
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('chamados')
-        .select('*')
-        .order('data_atualizacao', { ascending: false });
-
-      if (error) {
-        throw error;
-      }
+      const data = await fetchAllRows<any>(() => {
+        const q = supabase.from('chamados').select('*');
+        const filtered = encerrados
+          ? q.eq('status', 'resolvido')
+          : q.not('status', 'in', '("resolvido","excluido")');
+        return filtered.order('data_atualizacao', { ascending: false }).order('id');
+      });
 
       if (data) {
         const formattedChamados: Chamado[] = data.map(mapRowToChamado);

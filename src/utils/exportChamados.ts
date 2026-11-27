@@ -19,6 +19,9 @@ const STATUS_COLORS: Record<string, string> = {
   excluido: 'FFFFCDD2',
 };
 
+const MAX_CELL = 32000; // limite do Excel é 32.767 caracteres por célula
+const clip = (v: string) => (v && v.length > MAX_CELL ? v.slice(0, MAX_CELL) + '…' : v);
+
 const fmt = (d?: string | null) =>
   d ? new Date(d).toLocaleString('pt-BR') : '';
 
@@ -183,7 +186,11 @@ const rowFromChamado = (c: Chamado) => ({
 const buildListSheet = (ws: ExcelJS.Worksheet, chamados: Chamado[]) => {
   ws.columns = COLS.map(c => ({ header: c.header, key: c.key, width: c.width }));
   styleHeaderRow(ws.getRow(1));
-  chamados.forEach(c => ws.addRow(rowFromChamado(c)));
+  chamados.forEach(c => {
+    const r = rowFromChamado(c) as Record<string, string>;
+    Object.keys(r).forEach(k => { if (typeof r[k] === 'string') r[k] = clip(r[k]); });
+    ws.addRow(r);
+  });
   const statusCol = COLS.findIndex(c => c.key === 'status') + 1;
   styleBody(ws, 2, ws.rowCount, statusCol);
   ws.views = [{ state: 'frozen', ySplit: 1 }];
@@ -257,7 +264,7 @@ const buildSummarySheet = (ws: ExcelJS.Worksheet, chamados: Chamado[], filters: 
   addSection('Por Produto PEN', Object.entries(byProd));
   addSection('Por Responsável', Object.entries(byResp));
 
-  ws.views = [{ state: 'frozen', ySplit: 1 }];
+  ws.views = [{ state: 'frozen', ySplit: 1, showGridLines: false }];
 };
 
 const downloadBlob = async (wb: ExcelJS.Workbook, filename: string) => {
@@ -297,12 +304,16 @@ export async function exportChamadosXLSX(
     views: [{ state: 'frozen', ySplit: 1 }],
   }), filtered);
 
-  const produtos = Array.from(new Set(filtered.map(c => c.penProduto).filter(Boolean))) as string[];
+  const used = new Set(['resumo', 'chamados']);
+  const produtos = Array.from(new Set(filtered.map(c => (c.penProduto || '').trim()).filter(Boolean)));
   produtos.slice(0, 15).forEach(prod => {
-    const rows = filtered.filter(c => c.penProduto === prod);
+    const rows = filtered.filter(c => (c.penProduto || '').trim() === prod);
     if (rows.length === 0) return;
-    const safe = prod.replace(/[\\/?*[\]:]/g, '').slice(0, 28) || 'Produto';
-    buildListSheet(wb.addWorksheet(safe), rows);
+    const base = prod.replace(/[\\/?*[\]:']/g, '').trim().slice(0, 26) || 'Produto';
+    let name = base; let n = 2;
+    while (used.has(name.toLowerCase())) name = `${base.slice(0, 23)} (${n++})`;
+    used.add(name.toLowerCase());
+    buildListSheet(wb.addWorksheet(name), rows);
   });
 
   const stamp = new Date().toISOString().slice(0, 10);
